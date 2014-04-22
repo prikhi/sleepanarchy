@@ -20,6 +20,7 @@ urlpatterns = i18n_patterns("",
 )
 
 urlpatterns += patterns('',
+    ("^p/", include('mezzpaste.urls')),
 
     # We don't want to presume how your homepage works, so here are a
     # few patterns you can use to set it up.

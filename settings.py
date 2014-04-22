@@ -86,6 +86,17 @@ BLOG_RSS_LIMIT = None
 
 COMMENTS_DEFAULT_APPROVED = False
 
+DPASTE_SLUG_LENGTH = 6
+DPASTE_BASE_URL = "https://sleepanarchy.com"
+ugettext = lambda s: s
+DPASTE_EXPIRE_CHOICES = (
+    (3600, ugettext(u'In one hour')),
+    (3600 * 24 * 7, ugettext(u'In one week')),
+    (3600 * 24 * 30, ugettext(u'In one month')),
+    ('never', ugettext(u'Never')),
+)
+DPASTE_EXPIRE_DEFAULT = DPASTE_EXPIRE_CHOICES[3][0]
+
 SEARCH_MODEL_CHOICES = None
 SEARCH_PER_PAGE = 20
 
@@ -244,6 +255,11 @@ TEMPLATE_DIRS = (os.path.join(PROJECT_ROOT, "templates"),)
 
 INSTALLED_APPS = (
     "sleepanarchy",
+
+    "mptt",
+    "mezzpaste",
+    "dpaste",
+
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
