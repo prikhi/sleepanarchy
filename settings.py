@@ -79,6 +79,18 @@ from __future__ import absolute_import, unicode_literals
 # INSTALLED_APPS setting.
 USE_SOUTH = True
 
+ACCOUNTS_PROFILE_VIEWS_ENABLED = True
+
+BLOG_POST_PER_PAGE = 10
+BLOG_RSS_LIMIT = None
+
+COMMENTS_DEFAULT_APPROVED = False
+
+SEARCH_MODEL_CHOICES = None
+SEARCH_PER_PAGE = 20
+
+SITE_TITLE = 'Sleep Anarchy'
+
 
 ########################
 # MAIN DJANGO SETTINGS #
@@ -103,7 +115,7 @@ ALLOWED_HOSTS = []
 # timezone as the operating system.
 # If running in a Windows environment this must be set to the same as your
 # system time zone.
-TIME_ZONE = None
+TIME_ZONE = 'America/New_York'
 
 # If you set this to True, Django will use timezone-aware datetimes.
 USE_TZ = True
