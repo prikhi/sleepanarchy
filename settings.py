@@ -259,6 +259,7 @@ INSTALLED_APPS = (
     "mptt",
     "mezzpaste",
     "dpaste",
+    "linkdump",
 
     "django.contrib.admin",
     "django.contrib.auth",
