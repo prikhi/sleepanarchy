@@ -1,3 +1,3 @@
 Mezzanine==3.1.1
 mezzanine-dpaste==1.1.1
-mezzanine-linkdump=1.0.0
+mezzanine-linkdump==1.0.0
