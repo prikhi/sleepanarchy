@@ -20,7 +20,7 @@ urlpatterns = i18n_patterns("",
 )
 
 urlpatterns += patterns('',
-    ("^p/", include('mezzpaste.urls')),
+    ("^p/", include('dpaste.urls.dpaste')),
 
     ("^links/", include('linkdump.urls')),
     (r"^l/(?P<dump_slug>.*)$", "linkdump.views.link_dump_redirect"),
