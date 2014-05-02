@@ -35,7 +35,7 @@ urlpatterns += patterns('',
     # one homepage pattern, so if you use a different one, comment this
     # one out.
 
-    url("^$", direct_to_template, {"template": "index.html"}, name="home"),
+    # url("^$", direct_to_template, {"template": "index.html"}, name="home"),
 
     # HOMEPAGE AS AN EDITABLE PAGE IN THE PAGE TREE
     # ---------------------------------------------
@@ -60,7 +60,7 @@ urlpatterns += patterns('',
     # ``settings.py`` module, and delete the blog page object from the
     # page tree in the admin if it was installed.
 
-    # url("^$", "mezzanine.blog.views.blog_post_list", name="home"),
+    url("^$", "mezzanine.blog.views.blog_post_list", name="home"),
 
     # MEZZANINE'S URLS
     # ----------------
