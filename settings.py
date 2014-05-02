@@ -102,6 +102,7 @@ SEARCH_MODEL_CHOICES = None
 SEARCH_PER_PAGE = 20
 
 SITE_TITLE = 'Sleep Anarchy'
+SITE_TAGLINE = ''
 
 
 ########################
