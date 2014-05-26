@@ -94,9 +94,6 @@
     <div class="panel panel-default">
     <div class="panel-body">
     {% block right_panel %}
-    {% ifinstalled mezzanine.twitter %}
-    {% include "twitter/tweets.html" %}
-    {% endifinstalled %}
     {% endblock %}
     </div>
     </div>
@@ -113,11 +110,9 @@
 <p class="site-info text-center">
     {% trans "Except where otherwise noted, content on this site is licensed under a" %}
     <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
-        Creative Commons Attribution-NonCommercial-ShareAlike 4.0
+        Creative Commons BY-NC-SA 4.0
         International Public License</a>.
     Copyleft 2014.
-    <br />
-    <a target="_blank" href="https://github.com/prikhi/bootstrap-molokai">{% trans "Molokai Theme" %}</a>
     {% ifinstalled mezzanine.mobile %}
     <span class="separator">|</span>
     <a href="{% url "set_device" "mobile" %}?next={{ request.path }}">{% trans "View Mobile Site" %}</a>
