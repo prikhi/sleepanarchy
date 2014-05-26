@@ -88,7 +88,7 @@ BLOG_SLUG = ""
 COMMENTS_DEFAULT_APPROVED = False
 
 DPASTE_SLUG_LENGTH = 6
-DPASTE_BASE_URL = "https://sleepanarchy.com"
+DPASTE_BASE_URL = "http://sleepanarchy.com"
 ugettext = lambda s: s
 DPASTE_EXPIRE_CHOICES = (
     (3600, ugettext(u'In one hour')),
@@ -97,6 +97,13 @@ DPASTE_EXPIRE_CHOICES = (
     ('never', ugettext(u'Never')),
 )
 DPASTE_EXPIRE_DEFAULT = DPASTE_EXPIRE_CHOICES[3][0]
+MEZZPASTE_PYGMENTS_CSS = 'codehilite'
+
+PAGEDOWN_MARKDOWN_EXTENSIONS = ('extra', 'codehilite')
+PAGEDOWN_SERVER_SIDE_PREVIEW = True
+RICHTEXT_WIDGET_CLASS = 'mezzanine_pagedown.widgets.PageDownWidget'
+RICHTEXT_FILTER = 'mezzanine_pagedown.filters.custom'
+RICHTEXT_FILTER_LEVEL = 3
 
 SEARCH_MODEL_CHOICES = None
 SEARCH_PER_PAGE = 20
@@ -258,6 +265,7 @@ TEMPLATE_DIRS = (os.path.join(PROJECT_ROOT, "templates"),)
 INSTALLED_APPS = (
     "sleepanarchy",
 
+    "mezzanine_pagedown",
     "mptt",
     "mezzpaste",
     "dpaste",

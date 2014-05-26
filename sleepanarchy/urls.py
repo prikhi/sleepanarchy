@@ -5,6 +5,7 @@ from django.conf.urls.i18n import i18n_patterns
 from django.contrib import admin
 
 from mezzanine.core.views import direct_to_template
+import mezzanine_pagedown.urls
 
 
 admin.autodiscover()
@@ -24,6 +25,8 @@ urlpatterns += patterns('',
 
     ("^links/", include('linkdump.urls')),
     (r"^l/(?P<dump_slug>.*)$", "linkdump.views.link_dump_redirect"),
+
+    ("^pagedown/", include(mezzanine_pagedown.urls)),
 
     # We don't want to presume how your homepage works, so here are a
     # few patterns you can use to set it up.
