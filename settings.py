@@ -102,7 +102,7 @@ MEZZPASTE_PYGMENTS_CSS = 'codehilite'
 PAGEDOWN_MARKDOWN_EXTENSIONS = ('extra', 'codehilite')
 PAGEDOWN_SERVER_SIDE_PREVIEW = True
 RICHTEXT_WIDGET_CLASS = 'mezzanine_pagedown.widgets.PageDownWidget'
-RICHTEXT_FILTER = 'mezzanine_pagedown.filters.custom'
+RICHTEXT_FILTERS = 'mezzanine_pagedown.filters.custom'
 RICHTEXT_FILTER_LEVEL = 3
 
 SEARCH_MODEL_CHOICES = None
@@ -304,6 +304,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     "django.core.context_processors.request",
     "django.core.context_processors.tz",
     "mezzanine.conf.context_processors.settings",
+    "mezzanine.pages.context_processors.page",
 )
 
 # List of middleware classes to use. Order is important; in the request phase,
