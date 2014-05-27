@@ -102,7 +102,7 @@ MEZZPASTE_PYGMENTS_CSS = 'codehilite'
 PAGEDOWN_MARKDOWN_EXTENSIONS = ('extra', 'codehilite')
 PAGEDOWN_SERVER_SIDE_PREVIEW = True
 RICHTEXT_WIDGET_CLASS = 'mezzanine_pagedown.widgets.PageDownWidget'
-RICHTEXT_FILTERS = 'mezzanine_pagedown.filters.custom'
+RICHTEXT_FILTERS = ['mezzanine_pagedown.filters.custom']
 RICHTEXT_FILTER_LEVEL = 3
 
 SEARCH_MODEL_CHOICES = None
