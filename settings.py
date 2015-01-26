@@ -87,6 +87,7 @@ BLOG_SLUG = ""
 
 COMMENTS_DEFAULT_APPROVED = False
 
+# MEZZ-PASTE
 DPASTE_SLUG_LENGTH = 6
 DPASTE_BASE_URL = "http://sleepanarchy.com"
 ugettext = lambda s: s
@@ -99,17 +100,28 @@ DPASTE_EXPIRE_CHOICES = (
 DPASTE_EXPIRE_DEFAULT = DPASTE_EXPIRE_CHOICES[3][0]
 MEZZPASTE_PYGMENTS_CSS = 'codehilite'
 
+# PAGEDOWN
 PAGEDOWN_MARKDOWN_EXTENSIONS = ('extra', 'codehilite')
 PAGEDOWN_SERVER_SIDE_PREVIEW = True
 RICHTEXT_WIDGET_CLASS = 'mezzanine_pagedown.widgets.PageDownWidget'
 RICHTEXT_FILTERS = ['mezzanine_pagedown.filters.custom']
 RICHTEXT_FILTER_LEVEL = 3
 
+# DJANGO COMPRESSOR
+COMPRESS_CSS_FILTERS = [
+    'compressor.filters.css_default.CssAbsoluteFilter',
+    'compressor.filters.cssmin.CSSMinFilter',
+]
+
+# Site Search
 SEARCH_MODEL_CHOICES = None
 SEARCH_PER_PAGE = 20
 
+# General
 SITE_TITLE = 'Sleep Anarchy'
 SITE_TAGLINE = ''
+
+
 
 
 ########################
