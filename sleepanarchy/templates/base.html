@@ -127,8 +127,15 @@
 <script src="{% static "js/bootstrap.js" %}"></script>
 <script src="{% static "js/bootstrap-extras.js" %}"></script>
 {% block extra_js %}{% endblock %}
-{% include "includes/footer_scripts.html" %}
 
+{% endcompress %}
+<!--[if lt IE 9]>
+<script src="{% static "js/html5shiv.js" %}"></script>
+<script src="{% static "js/respond.min.js" %}"></script>
+<![endif]-->
+
+
+{% editable_loader %}
 {# Piwik Analytics #}
 {% block piwik %}
 <script type="text/javascript">
@@ -145,11 +152,6 @@
 </script>
 <noscript><p><img src="//piwik.sleepanarchy.com/piwik.php?idsite=1" style="border:0;" alt="" /></p></noscript>
 {% endblock %}
-{% endcompress %}
-<!--[if lt IE 9]>
-<script src="{% static "js/html5shiv.js" %}"></script>
-<script src="{% static "js/respond.min.js" %}"></script>
-<![endif]-->
 
 </body>
 </html>
