@@ -12,7 +12,11 @@
 {% endmetablock %}{% endblock %}
 
 {% block meta_description %}{% metablock %}
-{{ page.description }}
+{% if page.description %}
+  {{ page.description }}
+{% else %}
+  Computer Programming &amp; Linux System Administration Guides, Posts and Links.
+{% endif %}
 {% endmetablock %}{% endblock %}
 
 {% block title %}
