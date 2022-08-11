@@ -11,6 +11,8 @@ import           Control.Monad.Reader           ( MonadIO(..)
                                                 , ReaderT
                                                 , asks
                                                 )
+import           Crypto.JOSE.JWK                ( JWK )
+import           Data.Aeson                     ( decode )
 import           Data.Pool                      ( Pool )
 import           Database.Persist.Postgresql    ( createPostgresqlPool )
 import           Database.Persist.Sql           ( SqlBackend
@@ -21,13 +23,24 @@ import           Database.Persist.Sql           ( SqlBackend
 import           Servant                        ( ServerError
                                                 , throwError
                                                 )
+import           Servant.Auth.Server            ( JWTSettings
+                                                , defaultJWTSettings
+                                                , generateKey
+                                                )
 import           Servant.Server                 ( Handler )
+import           System.Environment             ( lookupEnv )
+import           System.IO                      ( hPutStrLn
+                                                , stderr
+                                                )
 
 import           Models.DB                      ( migrateAll )
 
+import qualified Data.ByteString.Lazy.Char8    as LBC
 
-newtype Config = Config
+
+data Config = Config
     { cfgDbPool :: Pool SqlBackend
+    , cfgJwk    :: JWK
     }
 
 mkConfig :: IO Config
@@ -36,6 +49,19 @@ mkConfig = do
         "host=localhost user=sleepanarchy-blog dbname=sleepanarchy-blog"
         20
     runSqlPool (runMigration migrateAll) cfgDbPool
+    cfgJwk <- lookupEnv "API_JWK" >>= \case
+        Nothing -> do
+            hPutStrLn
+                stderr
+                "`API_JWK` environmental variable not set - using ephemeral keys."
+            generateKey
+        Just rawJwk -> case decode $ LBC.pack rawJwk of
+            Nothing -> do
+                hPutStrLn
+                    stderr
+                    "Could not parse `API_JWK` environmental variable - using ephemeral keys."
+                generateKey
+            Just jwk -> return jwk
     return Config { .. }
 
 
@@ -66,3 +92,17 @@ class ThrowsError m where
 
 instance ThrowsError App where
     serverError = throwError
+
+
+class HasJwk a where
+    getJwk :: a -> JWK
+
+instance HasJwk Config where
+    getJwk = cfgJwk
+
+
+class JWTToken m where
+    getJWTSettings :: m JWTSettings
+
+instance (HasJwk cfg, MonadReader cfg m) => JWTToken m where
+    getJWTSettings = asks (defaultJWTSettings . getJwk)

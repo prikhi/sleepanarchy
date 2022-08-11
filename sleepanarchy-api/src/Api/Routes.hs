@@ -1,34 +1,70 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Api.Routes where
 
+import           Data.Aeson                     ( FromJSON )
 import           Data.Text                      ( Text )
 import           Servant.API                    ( (:<|>)(..)
                                                 , (:>)
                                                 , Capture
                                                 , Get
                                                 , JSON
+                                                , MimeUnrender(..)
+                                                , NoContent
+                                                , Post
+                                                , ReqBody
+                                                )
+import           Servant.API.ContentTypes       ( eitherDecodeLenient )
+import           Servant.Auth.Server.Internal.AddSetCookie
+                                                ( AddSetCookiesApi
+                                                , Nat(..)
                                                 )
 import           Servant.Docs                   ( DocCapture(..)
                                                 , ExtraInfo
                                                 , ToCapture(..)
+                                                , ToSample(..)
                                                 )
-import           Servant.Docs.Internal.Pretty   ( Pretty )
+import           Servant.Docs.Internal.Pretty   ( Pretty
+                                                , PrettyJSON
+                                                )
 import           Servant.Server                 ( ServerT )
+import           Web.Cookie                     ( SetCookie
+                                                , defaultSetCookie
+                                                , setCookieName
+                                                )
 
 import           App                            ( App )
 import           Handlers.BlogPosts
+import           Handlers.Login
 import           Utils                          ( mkEndpointNotes )
 
 
-type ServerAPI = BlogAPI
+type ServerAPI = BlogAPI :<|> LoginAPI
 
 api :: ServerT ServerAPI App
-api = blogApi
+api = blogApi :<|> loginApi
 
 apiEndpointDocs :: ExtraInfo (Pretty ServerAPI)
-apiEndpointDocs = blogNotes
+apiEndpointDocs = blogNotes <> loginNotes
 
+
+type LoginAPI
+    = AddSetCookiesApi
+          ( 'S ( 'S 'Z))
+          ("login" :> ReqBody '[JSON] UserLogin :> Post '[JSON] NoContent)
+
+loginApi :: ServerT LoginAPI App
+loginApi = userLogin
+
+loginNotes :: ExtraInfo (Pretty ServerAPI)
+loginNotes = mkEndpointNotes @LoginAPI @ServerAPI
+    ( "Throws"
+    , [ "* `401` is user does not exist"
+      , "* `401` if password is incorrect"
+      , "* `401` if server cannot generate cookies"
+      ]
+    )
 
 
 type BlogAPI =
@@ -51,5 +87,16 @@ blogApi = getBlogPosts :<|> getBlogPost
 
 
 
+-- ORPHANS
+
 instance ToCapture (Capture "slug" Text) where
     toCapture _ = DocCapture "slug" "slugified title of desired entity"
+
+instance FromJSON a => MimeUnrender PrettyJSON a where
+    mimeUnrender _ = eitherDecodeLenient
+
+instance ToSample SetCookie where
+    toSamples _ =
+        [ ("JWT" , defaultSetCookie { setCookieName = "JWT-Cookie" })
+        , ("XSRF", defaultSetCookie { setCookieName = "XSRF-TOKEN" })
+        ]

@@ -19,6 +19,9 @@ import           Database.Persist.TH            ( mkMigrate
                                                 , sqlSettings
                                                 )
 import           GHC.Generics                   ( Generic )
+import           Servant.Auth.Server            ( FromJWT
+                                                , ToJWT
+                                                )
 
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
@@ -42,3 +45,7 @@ BlogPost
     deriving Show Read Eq Ord Generic
 
 |]
+
+
+instance ToJWT UserId
+instance FromJWT UserId

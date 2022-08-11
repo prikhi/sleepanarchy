@@ -1,0 +1,19 @@
+cradle:
+  stack:
+    - path: "./src"
+      component: "sleepanarchy-api:lib"
+
+    - path: "./app/Main.hs"
+      component: "sleepanarchy-api:exe:sleepanarchy-api"
+
+    - path: "./app/Paths_sleepanarchy_api.hs"
+      component: "sleepanarchy-api:exe:sleepanarchy-api"
+
+    - path: "./management/Main.hs"
+      component: "sleepanarchy-api:exe:sleepanarchy-api-management"
+
+    - path: "./management/Paths_sleepanarchy_api.hs"
+      component: "sleepanarchy-api:exe:sleepanarchy-api-management"
+
+    - path: "./tests"
+      component: "sleepanarchy-api:test:sleepanarchy-api-test"

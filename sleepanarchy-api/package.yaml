@@ -63,14 +63,20 @@ library:
         src
     dependencies:
         - aeson
+        - bytestring
+        - cookie
         - esqueleto
+        - jose
         - lens
         - monad-logger
         - mtl
+        - password
         - persistent
         - persistent-postgresql
         - resource-pool
         - servant
+        - servant-auth
+        - servant-auth-server
         - servant-docs
         - servant-server
         - text
@@ -101,11 +107,13 @@ executables:
             - -with-rtsopts "-N -T"
         dependencies:
             - sleepanarchy-api
+            - aeson
             - mtl
             - password
             - persistent
             - postgresql-simple
             - safe-exceptions
+            - servant-auth-server
             - text
 
 tests:

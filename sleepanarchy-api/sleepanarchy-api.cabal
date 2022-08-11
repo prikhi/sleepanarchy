@@ -33,6 +33,7 @@ library
       Api.Routes
       App
       Handlers.BlogPosts
+      Handlers.Login
       Lib
       Models.DB
       Utils
@@ -54,14 +55,20 @@ library
   build-depends:
       aeson
     , base >=4.7 && <5
+    , bytestring
+    , cookie
     , esqueleto
+    , jose
     , lens
     , monad-logger
     , mtl
+    , password
     , persistent
     , persistent-postgresql
     , resource-pool
     , servant
+    , servant-auth
+    , servant-auth-server
     , servant-docs
     , servant-server
     , text
@@ -109,12 +116,14 @@ executable sleepanarchy-api-management
       ViewPatterns
   ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -O2 -threaded -rtsopts -with-rtsopts "-N -T"
   build-depends:
-      base >=4.7 && <5
+      aeson
+    , base >=4.7 && <5
     , mtl
     , password
     , persistent
     , postgresql-simple
     , safe-exceptions
+    , servant-auth-server
     , sleepanarchy-api
     , text
   default-language: Haskell2010

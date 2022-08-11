@@ -5,7 +5,17 @@
 module Utils where
 
 import           Control.Lens                   ( (<>~) )
-import           Data.Aeson
+import           Data.Aeson                     ( defaultOptions
+                                                , fieldLabelModifier
+                                                , genericParseJSON
+                                                , genericToJSON
+                                                )
+import           Data.Aeson.Types               ( GFromJSON
+                                                , GToJSON'
+                                                , Parser
+                                                , Value
+                                                , Zero
+                                                )
 import           Data.Char                      ( toLower )
 import           Data.Function                  ( (&) )
 import           Data.Proxy                     ( Proxy(..) )
@@ -25,15 +35,24 @@ import           Servant.Docs.Internal.Pretty   ( Pretty
 
 
 -- | Generate a 'ToJSON' instance by dropping a prefix from the beginning
--- of some fields & converting to camelCase.
+-- of fields & converting to camelCase.
 prefixToJSON
     :: (Generic a, GToJSON' Value Zero (Rep a)) => String -> a -> Value
 prefixToJSON pfx = genericToJSON defaultOptions
-    { fieldLabelModifier = dropPrefix
+    { fieldLabelModifier = dropJSONFieldPrefix pfx
     }
+
+-- | Generate a 'FromJSON' instance by adding the prefix to fields & fixing
+-- the casing.
+prefixParseJSON
+    :: (Generic a, GFromJSON Zero (Rep a)) => String -> Value -> Parser a
+prefixParseJSON pfx = genericParseJSON defaultOptions
+    { fieldLabelModifier = dropJSONFieldPrefix pfx
+    }
+
+dropJSONFieldPrefix :: String -> String -> String
+dropJSONFieldPrefix pfx = lowerHead . drop (length pfx)
   where
-    dropPrefix :: String -> String
-    dropPrefix = lowerHead . drop (length pfx)
     lowerHead :: String -> String
     lowerHead = \case
         x : xs -> toLower x : xs
