@@ -29,12 +29,18 @@ source-repository head
 
 library
   exposed-modules:
+      Api
+      Api.Routes
+      App
+      Handlers.BlogPosts
       Lib
+      Utils
   other-modules:
       Paths_sleepanarchy_api
   hs-source-dirs:
       src
   default-extensions:
+      DataKinds
       DeriveGeneric
       LambdaCase
       NamedFieldPuns
@@ -45,7 +51,14 @@ library
       ViewPatterns
   ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -O2
   build-depends:
-      base >=4.7 && <5
+      aeson
+    , base >=4.7 && <5
+    , mtl
+    , servant
+    , servant-docs
+    , servant-server
+    , text
+    , time
   default-language: Haskell2010
 
 executable sleepanarchy-api
@@ -55,6 +68,7 @@ executable sleepanarchy-api
   hs-source-dirs:
       app
   default-extensions:
+      DataKinds
       DeriveGeneric
       LambdaCase
       NamedFieldPuns
@@ -67,6 +81,7 @@ executable sleepanarchy-api
   build-depends:
       base >=4.7 && <5
     , sleepanarchy-api
+    , warp
   default-language: Haskell2010
 
 test-suite sleepanarchy-api-test
@@ -77,6 +92,7 @@ test-suite sleepanarchy-api-test
   hs-source-dirs:
       tests
   default-extensions:
+      DataKinds
       DeriveGeneric
       LambdaCase
       NamedFieldPuns

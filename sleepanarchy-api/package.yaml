@@ -43,6 +43,7 @@ ghc-options:
     - -O2
 
 default-extensions:
+    - DataKinds
     - DeriveGeneric
     - LambdaCase
     - NamedFieldPuns
@@ -61,7 +62,13 @@ library:
     source-dirs:
         src
     dependencies:
-        []
+        - aeson
+        - mtl
+        - servant
+        - servant-docs
+        - servant-server
+        - text
+        - time
 
 executables:
     sleepanarchy-api:
@@ -75,6 +82,7 @@ executables:
             - -with-rtsopts "-N -T"
         dependencies:
             - sleepanarchy-api
+            - warp
 
 tests:
     sleepanarchy-api-test:
