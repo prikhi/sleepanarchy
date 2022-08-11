@@ -63,7 +63,12 @@ library:
         src
     dependencies:
         - aeson
+        - esqueleto
+        - monad-logger
         - mtl
+        - persistent
+        - persistent-postgresql
+        - resource-pool
         - servant
         - servant-docs
         - servant-server

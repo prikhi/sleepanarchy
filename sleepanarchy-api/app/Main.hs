@@ -8,5 +8,6 @@ import           App
 main :: IO ()
 main = do
     let port = 9001
+    cfg <- mkConfig
     putStrLn $ "Starting Server on Port " <> show port
-    run port $ app Config
+    run port $ app cfg

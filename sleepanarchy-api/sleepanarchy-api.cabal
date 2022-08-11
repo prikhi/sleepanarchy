@@ -34,6 +34,7 @@ library
       App
       Handlers.BlogPosts
       Lib
+      Models.DB
       Utils
   other-modules:
       Paths_sleepanarchy_api
@@ -53,7 +54,12 @@ library
   build-depends:
       aeson
     , base >=4.7 && <5
+    , esqueleto
+    , monad-logger
     , mtl
+    , persistent
+    , persistent-postgresql
+    , resource-pool
     , servant
     , servant-docs
     , servant-server
