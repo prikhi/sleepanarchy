@@ -1,0 +1,96 @@
+cabal-version: 2.2
+
+-- This file has been generated from package.yaml by hpack version 0.34.4.
+--
+-- see: https://github.com/sol/hpack
+
+name:           sleepanarchy-api
+version:        0.1.0.0
+synopsis:       API Server for <https://sleepanarchy.com>.
+description:    This project contains the API definiton, route handlers, & database spec
+                for the API hosted at https://sleepanarchy.com/api/. It provides
+                functionality for Blog Posts, Link Sharing, & File Uploads.
+category:       Web
+homepage:       https://github.com/prikhi/sleepanarchy#readme
+bug-reports:    https://github.com/prikhi/sleepanarchy/issues
+author:         Pavan Rikhi
+maintainer:     pavan.rikhi@gmail.com
+copyright:      2022 Pavan Rikhi
+license:        GPL-3.0-or-later
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/prikhi/sleepanarchy
+
+library
+  exposed-modules:
+      Lib
+  other-modules:
+      Paths_sleepanarchy_api
+  hs-source-dirs:
+      src
+  default-extensions:
+      DeriveGeneric
+      LambdaCase
+      NamedFieldPuns
+      OverloadedStrings
+      TupleSections
+      TypeApplications
+      TypeOperators
+      ViewPatterns
+  ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -O2
+  build-depends:
+      base >=4.7 && <5
+  default-language: Haskell2010
+
+executable sleepanarchy-api
+  main-is: Main.hs
+  other-modules:
+      Paths_sleepanarchy_api
+  hs-source-dirs:
+      app
+  default-extensions:
+      DeriveGeneric
+      LambdaCase
+      NamedFieldPuns
+      OverloadedStrings
+      TupleSections
+      TypeApplications
+      TypeOperators
+      ViewPatterns
+  ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -O2 -threaded -rtsopts -with-rtsopts "-N -T"
+  build-depends:
+      base >=4.7 && <5
+    , sleepanarchy-api
+  default-language: Haskell2010
+
+test-suite sleepanarchy-api-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_sleepanarchy_api
+  hs-source-dirs:
+      tests
+  default-extensions:
+      DeriveGeneric
+      LambdaCase
+      NamedFieldPuns
+      OverloadedStrings
+      TupleSections
+      TypeApplications
+      TypeOperators
+      ViewPatterns
+  ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -O2 -threaded -rtsopts -with-rtsopts "-N -T"
+  build-depends:
+      base >=4.7 && <5
+    , hedgehog
+    , sleepanarchy-api
+    , tasty
+    , tasty-hedgehog
+    , tasty-hunit
+  default-language: Haskell2010
