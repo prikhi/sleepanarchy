@@ -23,7 +23,7 @@ appApi :: Proxy (Pretty ServerAPI)
 appApi = pretty (Proxy @ServerAPI)
 
 apiDocs :: API
-apiDocs = docs appApi
+apiDocs = docsWith defaultDocOptions [] apiEndpointDocs appApi
 
 type DocsAPI = "docs" :> Get '[PlainText] Text
 

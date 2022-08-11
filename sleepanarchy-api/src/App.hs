@@ -4,14 +4,22 @@
 {-# LANGUAGE UndecidableInstances #-}
 module App where
 
+import           Control.Monad.Except           ( MonadError )
 import           Control.Monad.Logger           ( runStdoutLoggingT )
-import           Control.Monad.Reader
+import           Control.Monad.Reader           ( MonadIO(..)
+                                                , MonadReader
+                                                , ReaderT
+                                                , asks
+                                                )
 import           Data.Pool                      ( Pool )
 import           Database.Persist.Postgresql    ( createPostgresqlPool )
 import           Database.Persist.Sql           ( SqlBackend
                                                 , SqlPersistT
                                                 , runMigration
                                                 , runSqlPool
+                                                )
+import           Servant                        ( ServerError
+                                                , throwError
                                                 )
 import           Servant.Server                 ( Handler )
 
@@ -32,7 +40,10 @@ mkConfig = do
 
 
 
-newtype App a = App { runApp :: ReaderT Config Handler a } deriving (Functor, Applicative, Monad, MonadReader Config, MonadIO)
+newtype App a =
+    App
+        { runApp :: ReaderT Config Handler a
+        } deriving (Functor, Applicative, Monad, MonadReader Config, MonadIO, MonadError ServerError)
 
 
 
@@ -48,3 +59,10 @@ class DB m where
 
 instance (HasDbPool cfg, MonadReader cfg m, MonadIO m) => DB m where
     runDB query = asks getDbPool >>= liftIO . runSqlPool query
+
+
+class ThrowsError m where
+    serverError :: ServerError -> m a
+
+instance ThrowsError App where
+    serverError = throwError

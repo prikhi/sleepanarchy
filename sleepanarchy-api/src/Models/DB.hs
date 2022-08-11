@@ -37,6 +37,7 @@ BlogPost
     updatedAt UTCTime
     publishedAt UTCTime Maybe
     authorId UserId OnDeleteCascade
+    UniqueBlogPost slug
     deriving Show Read Eq Ord Generic
 
 |]
