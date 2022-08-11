@@ -26,6 +26,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 User
     name Text
     password Text
+    UniqueUser name
     deriving Show Read Eq Ord Generic
 
 BlogPost

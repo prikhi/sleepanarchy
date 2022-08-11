@@ -9,6 +9,10 @@ Currently migrting from Python/Django/Mezzanine.
 
 ### SERVER
 
+* General
+    * Request Logging
+    * Env type for SQL & HTTP logging
+    * Authentication (HttpOnly + SameSite + Secure Cookie)
 * Blog Posts
     * Paginated list route
     * Admin: Create post route
