@@ -34,7 +34,15 @@ Currently migrting from Python/Django/Mezzanine.
 
 ### CLIENT
 
-* Everything
+* Webpack
+* Navigation
+* Structured API requests & decoding
+* Styling
+* Blog post details
+* Blog Sidebar(recent + archive + feeds?)
+* Link Dump page + redirect
+* Footer
+* Admin site(add/edit/delete posts, add/edit/delete links&categories)
 
 
 ## DEPLOY
