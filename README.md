@@ -34,7 +34,6 @@ Currently migrting from Python/Django/Mezzanine.
 
 ### CLIENT
 
-* Webpack
 * Navigation
 * Structured API requests & decoding
 * Styling

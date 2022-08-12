@@ -97,7 +97,7 @@ handleAction :: forall o m. MonadAff m => Action -> H.HalogenM State Action () o
 handleAction = case _ of
   MakeRequest -> do
     H.modify_ _ { loading = true }
-    response <- H.liftAff $ AXW.get AXRF.json ("http://localhost:9001/blog/posts")
+    response <- H.liftAff $ AXW.get AXRF.json "/api/blog/posts"
     H.modify_ _
       { loading = false
       , apiData = (\r -> lmap printJsonDecodeError $ decodeJson $ r.body) =<< lmap printError

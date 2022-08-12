@@ -5,8 +5,10 @@ The frontend code for sleepanarchy.com, built with Purescript & Halogen.
 ```sh
 nvm use
 npm install
-npx spago bundle-app
-python -m http.server
+# Production Build
+npm run build
+# Dev Build + Watching
+npm run watch
 ```
 
 ## LICENSE

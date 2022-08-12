@@ -1,25 +1,31 @@
 {
-  "name": "sleepanarchy-website",
-  "version": "1.0.0",
-  "description": "Frontend code for sleepanarchy.com",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/prikhi/sleepanarchy.git"
-  },
-  "author": "Pavan Rikhi",
-  "license": "GPL-3.0-or-later",
-  "bugs": {
-    "url": "https://github.com/prikhi/sleepanarchy/issues"
-  },
-  "homepage": "https://github.com/prikhi/sleepanarchy#readme",
-  "devDependencies": {
-    "esbuild": "^0.15.1",
-    "purescript": "^0.15.4",
-    "purs-tidy": "^0.9.1",
-    "spago": "^0.20.9"
-  }
+    "name": "sleepanarchy-website",
+    "version": "1.0.0",
+    "description": "Frontend code for sleepanarchy.com",
+    "main": "src/index.js",
+    "scripts": {
+        "build": "webpack --mode production",
+        "watch": "webpack serve",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/prikhi/sleepanarchy.git"
+    },
+    "author": "Pavan Rikhi",
+    "license": "GPL-3.0-or-later",
+    "bugs": {
+        "url": "https://github.com/prikhi/sleepanarchy/issues"
+    },
+    "homepage": "https://github.com/prikhi/sleepanarchy#readme",
+    "devDependencies": {
+        "esbuild": "^0.15.1",
+        "html-webpack-plugin": "^5.5.0",
+        "purescript": "^0.15.4",
+        "purs-tidy": "^0.9.1",
+        "spago": "^0.20.9",
+        "webpack": "^5.74.0",
+        "webpack-cli": "^4.10.0",
+        "webpack-dev-server": "^4.10.0"
+    }
 }
