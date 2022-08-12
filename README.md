@@ -11,12 +11,11 @@ Currently migrting from Python/Django/Mezzanine.
 
 * General
     * Request Logging
-    * Env type for SQL & HTTP logging
-    * Authentication (HttpOnly + SameSite + Secure Cookie)
+    * Env type for SQL & HTTP logging, Secure cookie setting
 * Blog Posts
     * Paginated list route
-    * Admin: Create post route
-    * Admin: Publish post route
+    * Admin: Get/Update post routes
+    * Admin: Publish post route?
 * Link Dump
     * DB Model
     * Fetch Route

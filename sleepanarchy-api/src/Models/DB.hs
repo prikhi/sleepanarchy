@@ -12,6 +12,7 @@ module Models.DB where
 
 import           Data.Text                      ( Text )
 import           Data.Time                      ( UTCTime )
+import           Database.Persist               ( ToBackendKey(..) )
 import           Database.Persist.TH            ( mkMigrate
                                                 , mkPersist
                                                 , persistLowerCase
@@ -21,6 +22,9 @@ import           Database.Persist.TH            ( mkMigrate
 import           GHC.Generics                   ( Generic )
 import           Servant.Auth.Server            ( FromJWT
                                                 , ToJWT
+                                                )
+import           Servant.Docs                   ( ToSample(..)
+                                                , singleSample
                                                 )
 
 
@@ -49,3 +53,6 @@ BlogPost
 
 instance ToJWT UserId
 instance FromJWT UserId
+
+instance ToSample BlogPostId where
+    toSamples _ = singleSample $ fromBackendKey 9001

@@ -16,6 +16,12 @@ import           Servant.API                    ( (:<|>)(..)
                                                 , ReqBody
                                                 )
 import           Servant.API.ContentTypes       ( eitherDecodeLenient )
+import           Servant.Auth.Server            ( Auth
+                                                , AuthResult(Authenticated)
+                                                , Cookie
+                                                , JWT
+                                                , ThrowAll(throwAll)
+                                                )
 import           Servant.Auth.Server.Internal.AddSetCookie
                                                 ( AddSetCookiesApi
                                                 , Nat(..)
@@ -28,22 +34,29 @@ import           Servant.Docs                   ( DocCapture(..)
 import           Servant.Docs.Internal.Pretty   ( Pretty
                                                 , PrettyJSON
                                                 )
-import           Servant.Server                 ( ServerT )
+import           Servant.Server                 ( ServerT
+                                                , err403
+                                                , errBody
+                                                )
 import           Web.Cookie                     ( SetCookie
                                                 , defaultSetCookie
                                                 , setCookieName
                                                 )
 
 import           App                            ( App )
+import qualified Data.ByteString.Lazy.Char8    as LBC
+import           Handlers.Admin
 import           Handlers.BlogPosts
 import           Handlers.Login
+import           Models.DB
 import           Utils                          ( mkEndpointNotes )
 
 
-type ServerAPI = BlogAPI :<|> LoginAPI
+type ServerAPI
+    = BlogAPI :<|> LoginAPI :<|> Auth '[Cookie, JWT] UserId :> AdminAPI
 
 api :: ServerT ServerAPI App
-api = blogApi :<|> loginApi
+api = blogApi :<|> loginApi :<|> adminApi
 
 apiEndpointDocs :: ExtraInfo (Pretty ServerAPI)
 apiEndpointDocs = blogNotes <> loginNotes
@@ -86,6 +99,15 @@ blogApi :: ServerT BlogAPI App
 blogApi = getBlogPosts :<|> getBlogPost
 
 
+type AdminAPI
+    = "admin" :> "blog" :> "post" :> ReqBody '[JSON] NewBlogPost :> Post '[JSON] BlogPostId
+
+adminApi :: AuthResult UserId -> ServerT AdminAPI App
+adminApi = \case
+    Authenticated uid -> createBlogPost uid
+    e                 -> throwAll err403 { errBody = LBC.pack $ show e }
+
+
 
 -- ORPHANS
 
@@ -98,5 +120,5 @@ instance FromJSON a => MimeUnrender PrettyJSON a where
 instance ToSample SetCookie where
     toSamples _ =
         [ ("JWT" , defaultSetCookie { setCookieName = "JWT-Cookie" })
-        , ("XSRF", defaultSetCookie { setCookieName = "XSRF-TOKEN" })
+        , ("XSRF", defaultSetCookie { setCookieName = "NO-XSRF-TOKEN" })
         ]

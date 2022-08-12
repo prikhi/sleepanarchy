@@ -22,9 +22,12 @@ import           Servant                        ( Header
                                                 , NoContent(..)
                                                 , err401
                                                 )
-import           Servant.Auth.Server            ( SetCookie
+import           Servant.Auth.Server            ( IsSecure(..)
+                                                , SetCookie
                                                 , acceptLogin
-                                                , def
+                                                , cookieIsSecure
+                                                , cookieXsrfSetting
+                                                , defaultCookieSettings
                                                 )
 import           Servant.Docs                   ( ToSample(..)
                                                 , singleSample
@@ -75,7 +78,12 @@ userLogin UserLogin {..} = do
             case verificationResult of
                 PasswordCheckSuccess -> do
                     jwtSettings   <- getJWTSettings
-                    mApplyCookies <- liftIO $ acceptLogin def jwtSettings uid
+                    mApplyCookies <- liftIO $ acceptLogin
+                        defaultCookieSettings { cookieIsSecure    = NotSecure
+                                              , cookieXsrfSetting = Nothing
+                                              }
+                        jwtSettings
+                        uid
                     case mApplyCookies of
                         Nothing           -> serverError err401
                         Just applyCookies -> return $ applyCookies NoContent

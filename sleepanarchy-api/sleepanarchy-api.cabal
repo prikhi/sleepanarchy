@@ -32,6 +32,7 @@ library
       Api
       Api.Routes
       App
+      Handlers.Admin
       Handlers.BlogPosts
       Handlers.Login
       Lib
@@ -68,6 +69,7 @@ library
     , resource-pool
     , servant
     , servant-auth
+    , servant-auth-docs
     , servant-auth-server
     , servant-docs
     , servant-server

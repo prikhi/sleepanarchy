@@ -6,16 +6,25 @@ import           Data.Text                      ( Text
                                                 , pack
                                                 )
 import           Servant.API
+import           Servant.Auth.Docs              ( )
+import           Servant.Auth.Server            ( CookieSettings
+                                                , JWTSettings
+                                                , cookieIsSecure
+                                                , cookieXsrfSetting
+                                                , defaultCookieSettings
+                                                , defaultJWTSettings
+                                                )
 import           Servant.Docs
 import           Servant.Docs.Internal.Pretty
 import           Servant.Server                 ( Application
+                                                , Context(..)
                                                 , Server
-                                                , hoistServer
-                                                , serve
+                                                , hoistServerWithContext
+                                                , serveWithContext
                                                 )
 
 import           Api.Routes
-import           App                            ( Config
+import           App                            ( Config(cfgJwk)
                                                 , runApp
                                                 )
 
@@ -31,9 +40,21 @@ appApiWithDocs :: Proxy (ServerAPI :<|> DocsAPI)
 appApiWithDocs = Proxy
 
 apiServer :: Config -> Server (ServerAPI :<|> DocsAPI)
-apiServer cfg = hoistServer appApi readerToHandler api
-    :<|> return (pack $ markdown apiDocs)
+apiServer cfg =
+    hoistServerWithContext appApi
+                           (Proxy @'[CookieSettings , JWTSettings])
+                           readerToHandler
+                           api
+        :<|> return (pack $ markdown apiDocs)
     where readerToHandler = flip runReaderT cfg . runApp
 
 app :: Config -> Application
-app cfg = serve appApiWithDocs (apiServer cfg)
+app cfg = serveWithContext
+    appApiWithDocs
+    (  defaultCookieSettings { cookieIsSecure    = NotSecure
+                             , cookieXsrfSetting = Nothing
+                             }
+    :. defaultJWTSettings (cfgJwk cfg)
+    :. EmptyContext
+    )
+    (apiServer cfg)
