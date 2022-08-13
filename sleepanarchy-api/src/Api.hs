@@ -9,7 +9,6 @@ import           Servant.API
 import           Servant.Auth.Docs              ( )
 import           Servant.Auth.Server            ( CookieSettings
                                                 , JWTSettings
-                                                , cookieIsSecure
                                                 , cookieXsrfSetting
                                                 , defaultCookieSettings
                                                 , defaultJWTSettings
@@ -51,9 +50,7 @@ apiServer cfg =
 app :: Config -> Application
 app cfg = serveWithContext
     appApiWithDocs
-    (  defaultCookieSettings { cookieIsSecure    = NotSecure
-                             , cookieXsrfSetting = Nothing
-                             }
+    (  defaultCookieSettings { cookieXsrfSetting = Nothing }
     :. defaultJWTSettings (cfgJwk cfg)
     :. EmptyContext
     )

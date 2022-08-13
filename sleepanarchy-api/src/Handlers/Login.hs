@@ -22,10 +22,8 @@ import           Servant                        ( Header
                                                 , NoContent(..)
                                                 , err401
                                                 )
-import           Servant.Auth.Server            ( IsSecure(..)
-                                                , SetCookie
+import           Servant.Auth.Server            ( SetCookie
                                                 , acceptLogin
-                                                , cookieIsSecure
                                                 , cookieXsrfSetting
                                                 , defaultCookieSettings
                                                 )
@@ -79,9 +77,7 @@ userLogin UserLogin {..} = do
                 PasswordCheckSuccess -> do
                     jwtSettings   <- getJWTSettings
                     mApplyCookies <- liftIO $ acceptLogin
-                        defaultCookieSettings { cookieIsSecure    = NotSecure
-                                              , cookieXsrfSetting = Nothing
-                                              }
+                        defaultCookieSettings { cookieXsrfSetting = Nothing }
                         jwtSettings
                         uid
                     case mApplyCookies of
