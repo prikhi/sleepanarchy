@@ -1,3 +1,5 @@
+{- | View the list of blog posts.
+-}
 module Pages.BlogPostList (page) where
 
 import Prelude

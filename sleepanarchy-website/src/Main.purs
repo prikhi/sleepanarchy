@@ -26,6 +26,7 @@ main = do
     driver <- runUI app unit body
     liftEffect <<< void $ matches router (handlePathChange driver) nav
   where
+  -- Send the 'UpdateRoute' query to the Halogen app whenever the URL changes.
   handlePathChange
     :: forall o
      . H.HalogenIO BaseSite.Query o Aff

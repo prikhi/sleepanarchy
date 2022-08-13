@@ -26,6 +26,7 @@ instance decodeDateTime :: DecodeJson ApiDateTime where
       DTP.fromString str
 
 -- BLOG POST
+
 type BlogPostList =
   { posts :: Array BlogPostListItem }
 

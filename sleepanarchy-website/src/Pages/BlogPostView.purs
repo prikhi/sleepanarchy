@@ -1,3 +1,5 @@
+{- | View a single blog post.
+-}
 module Pages.BlogPostView (page) where
 
 import Prelude

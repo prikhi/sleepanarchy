@@ -14,6 +14,9 @@ import Router (Route(..))
 import Type.Proxy (Proxy(..))
 import Web.UIEvent.MouseEvent as ME
 
+-- | The component representing the entire Halogen app. This has slots for each
+-- | distinct page type and switches on the stored Route to determine which to
+-- | render. It accepts route updates from outside the Halogen environment.
 component
   :: forall i o m. ApiRequest m => Navigation m => H.Component Query i o m
 component = H.mkComponent
@@ -23,11 +26,13 @@ component = H.mkComponent
       { handleQuery = handleQuery }
   }
 
-data Input a = Goto Route a
-
 data Query a = UpdateRoute Route a
 
+-- ^ Set the route to the given value.
+
 data Action = NavClick Route ME.MouseEvent
+
+-- ^ Response to a nav menu click by changing the route & url.
 
 type Slots =
   ( homePageSlot :: forall query. H.Slot query Void Unit
@@ -40,6 +45,8 @@ _homePage = Proxy
 _viewBlogPost :: Proxy "viewBlogPostSlot"
 _viewBlogPost = Proxy
 
+-- | The base app only cares about the current page, all other state is stored
+-- | within the various `Page.*` module componets.
 type State = { currentPage :: Route }
 
 initial :: State
@@ -52,6 +59,7 @@ handleQuery = case _ of
     H.modify_ (_ { currentPage = newRoute })
     pure $ Just next
 
+-- | Render the Header & Page Content.
 render
   :: forall m
    . ApiRequest m
@@ -82,6 +90,7 @@ renderHeader currentPage =
           ]
       ]
 
+-- | Render the correct slot for each Route.
 renderPage
   :: forall a m
    . ApiRequest m

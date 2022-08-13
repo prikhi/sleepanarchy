@@ -29,8 +29,11 @@ import Web.Event.Event (preventDefault)
 import Web.UIEvent.MouseEvent as ME
 
 -- APP MONAD
+
+-- | The context the Halogen app operates within.
 newtype AppM a = AppM (ReaderT AppEnv Aff a)
 
+-- | Run the given app context with the given environment.
 runAppM :: forall a. AppM a -> AppEnv -> Aff a
 runAppM (AppM m) = runReaderT m
 
@@ -46,6 +49,7 @@ derive newtype instance monadReaderAppM :: MonadReader AppEnv AppM
 
 -- APP ENVIRONMENT
 
+-- | Runtime values used by the app.
 data AppEnv = Env { nav :: PushStateInterface }
 
 -- NAVIGATION
@@ -57,6 +61,8 @@ instance hasNavAppEnv :: HasNav AppEnv where
   getNav (Env e) = e.nav
 
 class Monad m <= Navigation m where
+  -- | Set the page's URL to the URL for the given Route & call
+  -- | `preventDefault` on the given event if present.
   newUrl :: Route -> Maybe ME.MouseEvent -> m Unit
 
 instance navigationHasNav ::

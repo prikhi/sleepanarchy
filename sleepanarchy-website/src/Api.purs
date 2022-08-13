@@ -12,10 +12,12 @@ import Effect.Aff.Class (class MonadAff, liftAff)
 
 -- ENDPOINTS
 
+-- | Possible API endpoints we may hit.
 data Endpoint
   = BlogPostListRequest
   | BlogPostDetailsRequest String
 
+-- | Convert an API endpoint into it's URL, assuming a base path of `/api/`.
 endpointUrl :: Endpoint -> String
 endpointUrl = (<>) "/api" <<< case _ of
   BlogPostListRequest ->
@@ -25,6 +27,7 @@ endpointUrl = (<>) "/api" <<< case _ of
 
 -- EFFECT MONAD
 
+-- | API requests the app can make.
 class Monad m <= ApiRequest m where
   blogPostListRequest :: m (Either String BlogPostList)
   blogPostDetailsRequest :: String -> m (Either String BlogPostDetails)
@@ -35,11 +38,13 @@ instance appApiRequest :: MonadAff m => ApiRequest m where
 
 -- REQUEST HELPERS
 
+-- | Perform a GET request & decode the response as JSON.
 getRequest
   :: forall m a. MonadAff m => DecodeJson a => Endpoint -> m (Either String a)
 getRequest endpoint =
   decodeResponse <$> liftAff (AXW.get AXRF.json $ endpointUrl endpoint)
 
+-- | Decode a JSON response & unify the HTTP & JSON errors as Strings.
 decodeResponse
   :: forall a
    . DecodeJson a
