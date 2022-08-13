@@ -3,16 +3,17 @@ module BaseSite (Query(..), component) where
 import Prelude
 
 import Api (class ApiRequest)
-import App (class GetTime, class Navigation, getToday)
+import App (class GetTime, class Navigation, getToday, newUrl)
 import Data.Date (Date, canonicalDate, year)
 import Data.Enum (fromEnum)
 import Data.Maybe (Maybe(..))
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Pages.BlogPostList as BlogPostList
 import Pages.BlogPostView as BlogPostView
-import Router (Route(..))
+import Router (Route(..), reverse)
 import Type.Proxy (Proxy(..))
 import Web.UIEvent.MouseEvent as ME
 
@@ -76,13 +77,15 @@ handleQuery = case _ of
 handleAction
   :: forall m o
    . GetTime m
+  => Navigation m
   => Action
   -> H.HalogenM State Action Slots o m Unit
 handleAction = case _ of
   Initialize -> do
     today <- H.lift getToday
     H.modify_ _ { currentDate = today }
-  NavClick _ _ -> pure unit
+  NavClick route event ->
+    H.lift $ newUrl route $ Just event
 
 -- | Render the Header & Page Content.
 render
@@ -101,16 +104,18 @@ render { currentPage, currentDate } =
     ]
 
 renderHeader :: forall s m. Route -> H.ComponentHTML Action s m
-renderHeader currentPage =
+renderHeader _ =
   let
-    hereText r = if r == currentPage then HH.text " [HERE]" else HH.text ""
+    navLink text route =
+      HH.a [ HP.href (reverse route), HE.onClick $ NavClick route ]
+        [ HH.text text ]
   in
     HH.nav [ HP.class_ $ HH.ClassName "header" ]
       [ HH.div [ HP.class_ $ HH.ClassName "site-logo" ]
-          [ HH.text "Sleep Anarchy" ]
+          [ navLink "Sleep Anarchy" Home ]
       , HH.div [ HP.class_ $ HH.ClassName "nav" ]
           [ HH.ul_
-              [ HH.li_ [ HH.text "Home", hereText Home ]
+              [ HH.li_ [ navLink "Home" Home ]
               , HH.li_ [ HH.text "Links" ]
               ]
           ]
@@ -128,9 +133,8 @@ renderFooter currentDate =
                 "Creative Commons BY-NC-SA 4.0 International License"
                 "https://creativecommons.org/licenses/by-nc-sa/4.0/"
             , HH.text $ ". Copyleft 2014-" <> currentYear <> "."
-                <> "."
             ]
-        , HH.p_
+        , HH.p [HP.classes [H.ClassName "small"]]
             [ HH.text
                 "This site is built with "
             , externalLink "Purescript" "https://www.purescript.org"
