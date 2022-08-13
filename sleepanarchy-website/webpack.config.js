@@ -19,6 +19,7 @@ class SpagoWatchWebpackPlugin {
             this.logPidOutput(logger, buildPid.stderr);
         });
         compiler.hooks.watchRun.tapAsync(this.PLUGIN_NAME, (_, callback) => {
+            // TODO: watch `spago.dhall` - if changes, kill & re-run watcher
             if (this.watchPid === null) {
                 logger.info("Starting Spago Build Server");
                 this.watchPid = spawn("spago", ["bundle-app", "-w"]);
