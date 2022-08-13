@@ -4,10 +4,9 @@ import Prelude
 
 import Api
   ( class ApiRequest
-  , BlogPostList
-  , BlogPostListItem
   , blogPostListRequest
   )
+import Api.Types (BlogPostList, BlogPostListItem)
 import App (class Navigation, newUrl)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))

@@ -4,7 +4,7 @@ import Prelude
 
 import Affjax.ResponseFormat as AXRF
 import Affjax.Web as AXW
-import Api.Types (ApiDateTime)
+import Api.Types (BlogPostDetails, BlogPostList)
 import Data.Argonaut (class DecodeJson, Json, decodeJson, printJsonDecodeError)
 import Data.Bifunctor (bimap, lmap)
 import Data.Either (Either)
@@ -30,8 +30,8 @@ class Monad m <= ApiRequest m where
   blogPostDetailsRequest :: String -> m (Either String BlogPostDetails)
 
 instance appApiRequest :: MonadAff m => ApiRequest m where
-  blogPostListRequest = bplRequest
-  blogPostDetailsRequest = bpdRequest
+  blogPostListRequest = getRequest BlogPostListRequest
+  blogPostDetailsRequest = getRequest <<< BlogPostDetailsRequest
 
 -- REQUEST HELPERS
 
@@ -48,32 +48,3 @@ decodeResponse
 decodeResponse =
   bimap AXW.printError (_.body >>> decodeJson >>> lmap printJsonDecodeError) >>>
     join
-
--- BLOG POST
-
-type BlogPostList =
-  { posts :: Array BlogPostListItem }
-
-type BlogPostListItem =
-  { title :: String
-  , description :: String
-  , slug :: String
-  , createdAt :: ApiDateTime
-  , updatedAt :: ApiDateTime
-  , publishedAt :: ApiDateTime
-  }
-
-bplRequest :: forall m. MonadAff m => m (Either String BlogPostList)
-bplRequest = getRequest BlogPostListRequest
-
-type BlogPostDetails =
-  { title :: String
-  , content :: String
-  , createdAt :: ApiDateTime
-  , updatedAt :: ApiDateTime
-  , publishedAt :: ApiDateTime
-  }
-
-bpdRequest
-  :: forall m. MonadAff m => String -> m (Either String BlogPostDetails)
-bpdRequest = getRequest <<< BlogPostDetailsRequest

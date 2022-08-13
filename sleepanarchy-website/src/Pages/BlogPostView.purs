@@ -2,7 +2,8 @@ module Pages.BlogPostView (page) where
 
 import Prelude
 
-import Api (class ApiRequest, BlogPostDetails, blogPostDetailsRequest)
+import Api (class ApiRequest, blogPostDetailsRequest)
+import Api.Types (BlogPostDetails)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Halogen as H
