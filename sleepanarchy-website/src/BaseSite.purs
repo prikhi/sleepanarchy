@@ -3,16 +3,19 @@ module BaseSite (Query(..), component) where
 import Prelude
 
 import Api (class ApiRequest)
+import App (class Navigation)
 import Data.Maybe (Maybe(..))
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Pages.BlogPostList as BlogPostList
+import Pages.BlogPostView as BlogPostView
 import Router (Route(..))
 import Type.Proxy (Proxy(..))
 import Web.UIEvent.MouseEvent as ME
 
-component :: forall i o m. ApiRequest m => H.Component Query i o m
+component
+  :: forall i o m. ApiRequest m => Navigation m => H.Component Query i o m
 component = H.mkComponent
   { initialState: const initial
   , render
@@ -26,10 +29,16 @@ data Query a = UpdateRoute Route a
 
 data Action = NavClick Route ME.MouseEvent
 
-type Slots = (homePageSlot :: forall query. H.Slot query Void Unit)
+type Slots =
+  ( homePageSlot :: forall query. H.Slot query Void Unit
+  , viewBlogPostSlot :: forall query. H.Slot query Void String
+  )
 
 _homePage :: Proxy "homePageSlot"
 _homePage = Proxy
+
+_viewBlogPost :: Proxy "viewBlogPostSlot"
+_viewBlogPost = Proxy
 
 type State = { currentPage :: Route }
 
@@ -43,7 +52,12 @@ handleQuery = case _ of
     H.modify_ (_ { currentPage = newRoute })
     pure $ Just next
 
-render :: forall m. ApiRequest m => State -> H.ComponentHTML Action Slots m
+render
+  :: forall m
+   . ApiRequest m
+  => Navigation m
+  => State
+  -> H.ComponentHTML Action Slots m
 render { currentPage } =
   HH.div [ HP.id "root" ]
     [ renderHeader currentPage
@@ -68,11 +82,20 @@ renderHeader currentPage =
           ]
       ]
 
-renderPage :: forall a m. ApiRequest m => Route -> H.ComponentHTML a Slots m
-renderPage = case _ of
+renderPage
+  :: forall a m
+   . ApiRequest m
+  => Navigation m
+  => Route
+  -> H.ComponentHTML a Slots m
+renderPage = pageWrapper <<< case _ of
   Home ->
-    HH.div [ HP.class_ $ H.ClassName "main" ]
-      [ HH.slot_ _homePage unit BlogPostList.page unit
-      ]
+    HH.slot_ _homePage unit BlogPostList.page unit
+  ViewBlogPost slug ->
+    HH.slot_ _viewBlogPost slug BlogPostView.page slug
   page ->
-    HH.div_ [ HH.h1_ [ HH.text $ show page ] ]
+    HH.h1_ [ HH.text $ show page ]
+  where
+  pageWrapper :: forall w i. HH.HTML w i -> HH.HTML w i
+  pageWrapper content = HH.div [ HP.class_ $ H.ClassName "main" ]
+    [ content ]

@@ -12,20 +12,26 @@ import Effect.Aff.Class (class MonadAff, liftAff)
 
 -- ENDPOINTS
 
-data Endpoint = BlogPostListRequest
+data Endpoint
+  = BlogPostListRequest
+  | BlogPostDetailsRequest String
 
 endpointUrl :: Endpoint -> String
 endpointUrl = (<>) "/api" <<< case _ of
   BlogPostListRequest ->
     "/blog/posts"
+  BlogPostDetailsRequest slug ->
+    "/blog/post/" <> slug
 
 -- EFFECT MONAD
 
 class Monad m <= ApiRequest m where
   blogPostListRequest :: m (Either String BlogPostList)
+  blogPostDetailsRequest :: String -> m (Either String BlogPostDetails)
 
 instance appApiRequest :: MonadAff m => ApiRequest m where
   blogPostListRequest = bplRequest
+  blogPostDetailsRequest = bpdRequest
 
 -- REQUEST HELPERS
 
@@ -58,5 +64,16 @@ type BlogPostListItem =
   }
 
 bplRequest :: forall m. MonadAff m => m (Either String BlogPostList)
-bplRequest =
-  getRequest BlogPostListRequest
+bplRequest = getRequest BlogPostListRequest
+
+type BlogPostDetails =
+  { title :: String
+  , content :: String
+  , createdAt :: ApiDateTime
+  , updatedAt :: ApiDateTime
+  , publishedAt :: ApiDateTime
+  }
+
+bpdRequest
+  :: forall m. MonadAff m => String -> m (Either String BlogPostDetails)
+bpdRequest = getRequest <<< BlogPostDetailsRequest

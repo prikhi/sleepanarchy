@@ -11,7 +11,7 @@ Currently migrting from Python/Django/Mezzanine.
 
 * General
     * Request Logging
-    * Env type for SQL & HTTP logging, Secure cookie setting
+    * Env type for SQL & HTTP logging
 * Blog Posts
     * Paginated list route
     * Admin: Get/Update post routes
@@ -34,14 +34,16 @@ Currently migrting from Python/Django/Mezzanine.
 
 ### CLIENT
 
-* Navigation
-* Structured API requests & decoding
+* Navigation - href+onclick link helper
 * Styling
-* Blog post details
+* Blog Post published date formatting
 * Blog Sidebar(recent + archive + feeds?)
 * Link Dump page + redirect
 * Footer
-* Admin site(add/edit/delete posts, add/edit/delete links&categories)
+* Admin site
+    * add/edit/delete posts
+    * add/edit/delete links & categories
+    * browse media directory, create folders, upload & delete files
 
 
 ## DEPLOY

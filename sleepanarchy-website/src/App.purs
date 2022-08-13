@@ -1,4 +1,12 @@
-module App (AppM, runAppM, AppEnv(..), class Navigation, newUrl) where
+module App
+  ( AppM
+  , runAppM
+  , AppEnv(..)
+  , class HasNav
+  , getNav
+  , class Navigation
+  , newUrl
+  ) where
 
 import Prelude
 
@@ -9,11 +17,16 @@ import Control.Monad.Reader
   , asks
   , runReaderT
   )
+import Data.Maybe (Maybe)
+import Data.Traversable (for)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Foreign (unsafeToForeign)
+import Router (Route, reverse)
 import Routing.PushState (PushStateInterface)
+import Web.Event.Event (preventDefault)
+import Web.UIEvent.MouseEvent as ME
 
 -- APP MONAD
 newtype AppM a = AppM (ReaderT AppEnv Aff a)
@@ -44,7 +57,7 @@ instance hasNavAppEnv :: HasNav AppEnv where
   getNav (Env e) = e.nav
 
 class Monad m <= Navigation m where
-  newUrl :: String -> m Unit
+  newUrl :: Route -> Maybe ME.MouseEvent -> m Unit
 
 instance navigationHasNav ::
   ( HasNav env
@@ -52,6 +65,7 @@ instance navigationHasNav ::
   , MonadEffect m
   ) =>
   Navigation m where
-  newUrl url = do
+  newUrl url mbEvent = do
+    void $ for mbEvent $ ME.toEvent >>> preventDefault >>> liftEffect
     nav <- asks getNav
-    liftEffect $ nav.pushState (unsafeToForeign {}) url
+    liftEffect $ nav.pushState (unsafeToForeign {}) $ reverse url

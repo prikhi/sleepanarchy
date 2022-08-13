@@ -33,6 +33,5 @@ main = do
     -> Route
     -> Effect Unit
   handlePathChange driver oldRoute route = do
-    info $ "Path changed from (" <> show oldRoute <> ") to (" <> show route <>
-      ")"
+    info $ "Path changed from " <> show oldRoute <> " to " <> show route
     launchAff_ $ void $ driver.query $ H.mkTell $ BaseSite.UpdateRoute route
