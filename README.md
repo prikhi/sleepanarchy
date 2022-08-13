@@ -35,11 +35,15 @@ Currently migrting from Python/Django/Mezzanine.
 ### CLIENT
 
 * Navigation - href+onclick link helper
-* Styling
+* Styling - infra in place, need to actually write styles now
 * Blog Post published date formatting
 * Blog Sidebar(recent + archive + feeds?)
 * Link Dump page + redirect
-* Footer
+* Favicon
+* SEO, structured meta-data
+    * On index.html
+    * Update on page changes
+* robots.txt
 * Admin site
     * add/edit/delete posts
     * add/edit/delete links & categories

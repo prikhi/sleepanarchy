@@ -6,6 +6,8 @@ module App
   , getNav
   , class Navigation
   , newUrl
+  , class GetTime
+  , getToday
   ) where
 
 import Prelude
@@ -17,11 +19,13 @@ import Control.Monad.Reader
   , asks
   , runReaderT
   )
+import Data.Date (Date)
 import Data.Maybe (Maybe)
 import Data.Traversable (for)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
+import Effect.Now (nowDate)
 import Foreign (unsafeToForeign)
 import Router (Route, reverse)
 import Routing.PushState (PushStateInterface)
@@ -75,3 +79,11 @@ instance navigationHasNav ::
     void $ for mbEvent $ ME.toEvent >>> preventDefault >>> liftEffect
     nav <- asks getNav
     liftEffect $ nav.pushState (unsafeToForeign {}) $ reverse url
+
+-- DATES
+
+class Monad m <= GetTime m where
+  getToday :: m Date
+
+instance monadEffectGetTime :: MonadEffect m => GetTime m where
+  getToday = liftEffect nowDate
