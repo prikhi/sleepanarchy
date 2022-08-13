@@ -10,4 +10,4 @@ main = do
     let port = 9001
     cfg <- mkConfig
     putStrLn $ "Starting Server on Port " <> show port
-    run port $ app cfg
+    run port $ cfgLoggingMiddleware cfg $ app cfg

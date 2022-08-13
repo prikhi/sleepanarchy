@@ -82,6 +82,7 @@ library:
         - servant-server
         - text
         - time
+        - wai-extra
 
 executables:
     sleepanarchy-api:

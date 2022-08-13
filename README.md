@@ -9,9 +9,6 @@ Currently migrting from Python/Django/Mezzanine.
 
 ### SERVER
 
-* General
-    * Request Logging
-    * Env type for SQL & HTTP logging
 * Blog Posts
     * Paginated list route
     * Admin: Get/Update post routes
@@ -25,7 +22,7 @@ Currently migrting from Python/Django/Mezzanine.
     * Decide to keep or ditch this
 * Media
     * DB Model(folders + files)
-    * Passthrough public endpoint to filesystem
+    * Passthrough public endpoint to filesystem(Development env only)
     * Admin: Get folders / files
     * Admin: Create folder
     * Admin: Upload file

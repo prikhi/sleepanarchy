@@ -5,7 +5,9 @@
 module App where
 
 import           Control.Monad.Except           ( MonadError )
-import           Control.Monad.Logger           ( runStdoutLoggingT )
+import           Control.Monad.Logger           ( NoLoggingT(runNoLoggingT)
+                                                , runStdoutLoggingT
+                                                )
 import           Control.Monad.Reader           ( MonadIO(..)
                                                 , MonadReader
                                                 , ReaderT
@@ -13,14 +15,20 @@ import           Control.Monad.Reader           ( MonadIO(..)
                                                 )
 import           Crypto.JOSE.JWK                ( JWK )
 import           Data.Aeson                     ( decode )
+import           Data.Maybe                     ( fromMaybe )
 import           Data.Pool                      ( Pool )
-import           Database.Persist.Postgresql    ( createPostgresqlPool )
+import           Database.Persist.Postgresql    ( ConnectionString
+                                                , createPostgresqlPool
+                                                )
 import           Database.Persist.Sql           ( SqlBackend
                                                 , SqlPersistT
                                                 , runMigration
                                                 , runSqlPool
                                                 )
-import           Servant                        ( ServerError
+import           Network.Wai.Middleware.RequestLogger
+                                                ( logStdoutDev )
+import           Servant                        ( Application
+                                                , ServerError
                                                 , throwError
                                                 )
 import           Servant.Auth.Server            ( JWTSettings
@@ -32,22 +40,35 @@ import           System.Environment             ( lookupEnv )
 import           System.IO                      ( hPutStrLn
                                                 , stderr
                                                 )
+import           Text.Read                      ( readMaybe )
 
 import           Models.DB                      ( migrateAll )
 
 import qualified Data.ByteString.Lazy.Char8    as LBC
 
 
+data Environment
+    = Production
+    | Development
+    deriving (Show, Read, Eq)
+
 data Config = Config
-    { cfgDbPool :: Pool SqlBackend
-    , cfgJwk    :: JWK
+    { cfgDbPool            :: Pool SqlBackend
+    , cfgJwk               :: JWK
+    , cfgLoggingMiddleware :: Application -> Application
     }
 
 mkConfig :: IO Config
 mkConfig = do
-    cfgDbPool <- runStdoutLoggingT $ createPostgresqlPool
-        "host=localhost user=sleepanarchy-blog dbname=sleepanarchy-blog"
-        20
+    env <- fromMaybe Development . (>>= readMaybe) <$> lookupEnv "ENVIRONMENT"
+    let cfgLoggingMiddleware = case env of
+            Development -> logStdoutDev
+            Production  -> id
+    cfgDbPool <- case env of
+        Development ->
+            runStdoutLoggingT $ createPostgresqlPool dbConnectionString 2
+        Production ->
+            runNoLoggingT $ createPostgresqlPool dbConnectionString 20
     runSqlPool (runMigration migrateAll) cfgDbPool
     cfgJwk <- lookupEnv "API_JWK" >>= \case
         Nothing -> do
@@ -63,6 +84,10 @@ mkConfig = do
                 generateKey
             Just jwk -> return jwk
     return Config { .. }
+  where
+    dbConnectionString :: ConnectionString
+    dbConnectionString =
+        "host=localhost user=sleepanarchy-blog dbname=sleepanarchy-blog"
 
 
 
