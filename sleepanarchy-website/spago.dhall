@@ -30,6 +30,7 @@ to generate this file without the comments in this block.
   , "prelude"
   , "routing"
   , "transformers"
+  , "web-events"
   , "web-uievents"
   ]
 , packages = ./packages.dhall

@@ -1,6 +1,9 @@
 const path = require("path");
-const HtmlWebpackPlugin = require("html-webpack-plugin");
 const { spawn, spawnSync } = require("node:child_process");
+
+const HtmlWebpackPlugin = require("html-webpack-plugin");
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
 
 class SpagoWatchWebpackPlugin {
     watchPid = null;
@@ -49,43 +52,67 @@ class SpagoWatchWebpackPlugin {
     }
 }
 
-module.exports = {
-    mode: "development",
-    entry: {
-        index: "./index.js",
-    },
-    output: {
-        filename: "[name].[contenthash].js",
-        path: path.resolve(__dirname, "dist"),
-        publicPath: "/",
-        clean: true,
-    },
-    plugins: [
-        new HtmlWebpackPlugin({
-            title: "Sleep Anarchy",
-            meta: {
-                "google-site-verification":
-                    "mw_vy86UEcJ1tGnIBEG_hs77Zy3mo6VYsRYe_FB7Igg",
-            },
-        }),
-        new SpagoWatchWebpackPlugin(),
-    ],
-    devServer: {
-        static: "./dist",
-        server: "spdy",
-        historyApiFallback: true,
-        proxy: {
-            "/api": {
-                target: "http://127.0.0.1:9001",
-                pathRewrite: { "^/api": "" },
+module.exports = (env, _) => {
+    const isProduction = !env.WEBPACK_SERVE;
+    return {
+        mode: "development",
+        entry: {
+            index: "./index.js",
+            styles: "./src/styles.sass",
+        },
+        output: {
+            filename: "[name].[contenthash].js",
+            path: path.resolve(__dirname, "dist"),
+            publicPath: "/",
+            clean: true,
+        },
+        module: {
+            rules: [
+                {
+                    test: /\.s[ac]ss$/i,
+                    use: [
+                        isProduction
+                            ? MiniCssExtractPlugin.loader
+                            : "style-loader",
+                        "css-loader",
+                        "sass-loader",
+                    ],
+                },
+            ],
+        },
+        plugins: [
+            new HtmlWebpackPlugin({
+                title: "Sleep Anarchy",
+                meta: {
+                    "google-site-verification":
+                        "mw_vy86UEcJ1tGnIBEG_hs77Zy3mo6VYsRYe_FB7Igg",
+                },
+            }),
+            new SpagoWatchWebpackPlugin(),
+            new MiniCssExtractPlugin({
+                filename: "[name].[contenthash].css",
+                chunkFilename: "[id].[contenthash].css",
+            }),
+        ],
+        devServer: {
+            static: "./dist",
+            server: "spdy",
+            historyApiFallback: true,
+            hot: true,
+            proxy: {
+                "/api": {
+                    target: "http://127.0.0.1:9001",
+                    pathRewrite: { "^/api": "" },
+                },
             },
         },
-    },
-    optimization: {
-        runtimeChunk: "single",
-    },
-    stats: {
-        colors: true,
-        chunks: false,
-    },
+        optimization: {
+            runtimeChunk: "single",
+            minimizer: ["...", new CssMinimizerPlugin()],
+        },
+        stats: {
+            colors: true,
+            chunks: false,
+        },
+    };
 };
