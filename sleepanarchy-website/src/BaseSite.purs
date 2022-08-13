@@ -2,8 +2,8 @@ module BaseSite (Query(..), component) where
 
 import Prelude
 
+import Api (class ApiRequest)
 import Data.Maybe (Maybe(..))
-import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
@@ -12,7 +12,7 @@ import Router (Route(..))
 import Type.Proxy (Proxy(..))
 import Web.UIEvent.MouseEvent as ME
 
-component :: forall i o m. MonadAff m => H.Component Query i o m
+component :: forall i o m. ApiRequest m => H.Component Query i o m
 component = H.mkComponent
   { initialState: const initial
   , render
@@ -43,7 +43,7 @@ handleQuery = case _ of
     H.modify_ (_ { currentPage = newRoute })
     pure $ Just next
 
-render :: forall m. MonadAff m => State -> H.ComponentHTML Action Slots m
+render :: forall m. ApiRequest m => State -> H.ComponentHTML Action Slots m
 render { currentPage } =
   HH.div [ HP.id "root" ]
     [ renderHeader currentPage
@@ -68,7 +68,7 @@ renderHeader currentPage =
           ]
       ]
 
-renderPage :: forall a m. MonadAff m => Route -> H.ComponentHTML a Slots m
+renderPage :: forall a m. ApiRequest m => Route -> H.ComponentHTML a Slots m
 renderPage = case _ of
   Home ->
     HH.div [ HP.class_ $ H.ClassName "main" ]

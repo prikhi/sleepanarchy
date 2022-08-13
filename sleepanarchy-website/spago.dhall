@@ -23,11 +23,14 @@ to generate this file without the comments in this block.
   , "effect"
   , "either"
   , "foldable-traversable"
+  , "foreign"
   , "halogen"
   , "maybe"
   , "parsing"
   , "prelude"
   , "routing"
+  , "transformers"
+  , "web-uievents"
   ]
 , packages = ./packages.dhall
 , sources = [ "src/**/*.purs", "test/**/*.purs" ]

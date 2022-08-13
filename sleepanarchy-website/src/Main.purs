@@ -2,6 +2,7 @@ module Main (main) where
 
 import Prelude
 
+import App (AppEnv(..), runAppM)
 import BaseSite as BaseSite
 import Data.Maybe (Maybe)
 import Effect (Effect)
@@ -17,10 +18,12 @@ import Routing.PushState (makeInterface, matches)
 main :: Effect Unit
 main = do
   nav <- makeInterface
+  let env = Env { nav }
   HA.runHalogenAff do
     liftEffect $ info "Sleepanarchy.com Purescript Client Starting Up..."
     body <- HA.awaitBody
-    driver <- runUI BaseSite.component unit body
+    let app = H.hoist (flip runAppM env) BaseSite.component
+    driver <- runUI app unit body
     liftEffect <<< void $ matches router (handlePathChange driver) nav
   where
   handlePathChange
