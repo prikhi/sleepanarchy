@@ -11,6 +11,7 @@ Currently migrting from Python/Django/Mezzanine.
 
 * Blog Posts
     * Paginated list route
+    * Categories & Tags(maybe just tags?)
     * Admin: Get/Update post routes
     * Admin: Publish post route?
 * Link Dump
@@ -31,16 +32,18 @@ Currently migrting from Python/Django/Mezzanine.
 
 ### CLIENT
 
-* Navigation - href+onclick link helper
-* Styling - infra in place, need to actually write styles now
-* Blog Post published date formatting
-* Blog Sidebar(recent + archive + feeds?)
+* General
+    * Favicon
+    * SEO, structured meta-data
+        * On index.html
+        * Update on page changes
+    * robots.txt
+* Styling - check post styling after adding markdown rendering
+* Blog Posts
+    * render post bodies as markdown
+    * published date formatting(X days ago)
+    * Sidebar(recent + archive + feeds?)
 * Link Dump page + redirect
-* Favicon
-* SEO, structured meta-data
-    * On index.html
-    * Update on page changes
-* robots.txt
 * Admin site
     * add/edit/delete posts
     * add/edit/delete links & categories

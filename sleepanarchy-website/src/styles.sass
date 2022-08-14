@@ -1,20 +1,149 @@
+/* Variables */
 // Colors
-$body-background: #1b1d1e
-$body-text: #fff
+$background: #1B1D1E
+$near-black: #080800
+$near-white: #F8F8F0
+$off-white: #C4BE89
+$blue-gray: #293739
+$light-blue: #7E8E91
+$green: #A6E22E
+$orange: #FD971F
+$magenta: #F92672
+//$cyan: #66D9EF
+//$deep-blue: #13354A
+//$pale-yellow: #E6DB74
+//$red: #FF0000
 
+$body-background: $background
+$body-text: $near-white
+
+/* Utility Classes */
+.text-center
+  text-align: center
+
+/* Element Specifics */
 html,
 body
   height: 100%
   width: 100%
   margin: 0
   padding: 0
+  font-size: 1rem
+  font-family: Sans
 
 body
   background-color: $body-background
   color: $body-text
 
-.text-center
-  text-align: center
-
-.small
+small
   font-size: 0.8em
+
+a, a:visited
+  color: $orange
+  font-weight: bold
+  text-decoration: none
+
+/* Page Layout */
+
+div#root
+  display: flex
+  flex-direction: column
+  height: 100%
+
+  // Navigation
+  > nav
+    color: $near-white
+    background-color: $blue-gray
+    border-bottom: 1px solid $light-blue
+
+    padding: 0 1rem
+
+    > div
+      display: inline-block
+
+    .site-logo
+      font-weight: bold
+      a, a:visited
+        color: $magenta
+
+    a
+      display: inline-block
+      padding: 1rem 1rem
+
+    ul
+      display: inline-flex
+      align-items: center
+      padding: 0
+      margin: 0
+      li
+        list-style: none
+        a, a:visited
+          color: $near-white
+          font-weight: normal
+          transition: 0.3s background-color
+          &.active
+            background-color: darken($blue-gray, 5%)
+          &:active, &:hover
+            background-color: lighten($blue-gray, 5%)
+
+  // Footer
+  > footer
+    border-top: 1px solid $light-blue
+    color: $off-white
+    background-color: $near-black
+    margin-top: 2rem
+    > div
+      max-width: 90%
+      margin: 0 auto
+
+  // Main Content
+  > div#main
+    margin: 0 auto
+    padding: 1rem 0
+    width: 100%
+    align-self: center
+    flex-grow: 1
+
+    max-width: 95%
+    @media screen and (min-width: 360px)
+      max-width: 90%
+    @media screen and (min-width: 1400px)
+      max-width: 1250px
+
+
+/* Blog */
+
+div.post-list, div.post-details
+  div.post-meta
+    font-size: 0.85rem
+    color: $magenta
+  .post-title
+    color: $green
+    > a
+      color: $green
+
+div.post-list
+  hr.post-separator
+    border-color: $orange
+    border-style: dashed
+    border-width: 0 0 1px
+    margin: 2rem 0
+
+  h2.post-title
+    margin-bottom: 0.1rem
+
+  div.post-meta
+    font-size: 0.85rem
+    color: $magenta
+
+  p.post-description
+    margin-bottom: 1rem
+
+div.post-details
+  h1.post-title
+    margin-bottom: 0.5rem
+
+  div.post-meta
+    padding-bottom: 1rem
+    border-bottom: 1px solid $magenta
+    margin-bottom: 1.5rem

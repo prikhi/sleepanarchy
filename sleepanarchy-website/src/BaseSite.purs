@@ -9,11 +9,10 @@ import Data.Enum (fromEnum)
 import Data.Maybe (Maybe(..))
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Pages.BlogPostList as BlogPostList
 import Pages.BlogPostView as BlogPostView
-import Router (Route(..), reverse)
+import Router (Route(..), navLinkAttr)
 import Type.Proxy (Proxy(..))
 import Web.UIEvent.MouseEvent as ME
 
@@ -104,10 +103,15 @@ render { currentPage, currentDate } =
     ]
 
 renderHeader :: forall s m. Route -> H.ComponentHTML Action s m
-renderHeader _ =
+renderHeader currentPage =
   let
+    activePageClass route =
+      if route == currentPage then [ H.ClassName "active" ] else []
     navLink text route =
-      HH.a [ HP.href (reverse route), HE.onClick $ NavClick route ]
+      HH.a
+        ( (navLinkAttr route (NavClick route)) <>
+            [ HP.classes (activePageClass route) ]
+        )
         [ HH.text text ]
   in
     HH.nav [ HP.class_ $ HH.ClassName "header" ]
@@ -116,7 +120,7 @@ renderHeader _ =
       , HH.div [ HP.class_ $ HH.ClassName "nav" ]
           [ HH.ul_
               [ HH.li_ [ navLink "Home" Home ]
-              , HH.li_ [ HH.text "Links" ]
+              , HH.li_ [ HH.a_ [ HH.text "Links" ] ]
               ]
           ]
       ]
@@ -126,23 +130,26 @@ renderFooter currentDate =
   HH.footer_
     [ HH.div
         [ HP.classes [ H.ClassName "site-info", H.ClassName "text-center" ] ]
-        [ HH.p_
-            [ HH.text
-                "Except where otherwise noted, content on this site is licensed under a "
-            , externalLink
-                "Creative Commons BY-NC-SA 4.0 International License"
-                "https://creativecommons.org/licenses/by-nc-sa/4.0/"
-            , HH.text $ ". Copyleft 2014-" <> currentYear <> "."
-            ]
-        , HH.p [HP.classes [H.ClassName "small"]]
-            [ HH.text
-                "This site is built with "
-            , externalLink "Purescript" "https://www.purescript.org"
-            , HH.text " & "
-            , externalLink "Haskell" "https://www.haskell.org"
-            , HH.text ". Source code is available "
-            , externalLink "on GitHub" "https://github.com/prikhi/sleepanarchy"
-            , HH.text "."
+        [ HH.small_
+            [ HH.p_
+                [ HH.text
+                    "Except where otherwise noted, content on this site is licensed under a "
+                , externalLink
+                    "Creative Commons BY-NC-SA 4.0 International License"
+                    "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+                , HH.text $ ". Copyleft 2014-" <> currentYear <> "."
+                ]
+            , HH.p_
+                [ HH.text
+                    "This site is built with "
+                , externalLink "Purescript" "https://www.purescript.org"
+                , HH.text " & "
+                , externalLink "Haskell" "https://www.haskell.org"
+                , HH.text ". Source code is available "
+                , externalLink "on GitHub"
+                    "https://github.com/prikhi/sleepanarchy"
+                , HH.text "."
+                ]
             ]
         ]
 

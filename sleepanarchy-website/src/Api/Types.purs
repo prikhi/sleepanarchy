@@ -18,6 +18,8 @@ import Parsing (parseErrorMessage)
 -- appropiate decoding instance.
 data ApiDateTime = ApiDateTime DateTime
 
+derive instance eqApiDateTime :: Eq ApiDateTime
+
 instance decodeDateTime :: DecodeJson ApiDateTime where
   decodeJson json = do
     str <- decodeJson json
