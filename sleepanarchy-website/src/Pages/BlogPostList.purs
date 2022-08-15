@@ -14,8 +14,7 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Router (Route(..), navLinkAttr)
-import Utils (showDate)
-import Views.Blog (renderBlogSidebar)
+import Views.Blog (renderBlogSidebar, renderPostMeta, renderTagList)
 import Web.UIEvent.MouseEvent as ME
 
 page :: forall q i o m. ApiRequest m => Navigation m => H.Component q i o m
@@ -70,15 +69,10 @@ render = _.apiData >>> case _ of
     HH.div_
       [ HH.h2 [ HP.classes [ H.ClassName "post-title" ] ]
           [ postLink bpld bpld.title ]
-      , HH.div
-          [ HP.classes [ H.ClassName "post-meta" ] ]
-          [ HH.text $ "Posted on " <> showDate bpld.publishedAt
-          , if bpld.publishedAt /= bpld.updatedAt then
-              HH.text $ " | Updated on " <> showDate bpld.updatedAt
-            else HH.text ""
-          ]
+      , renderPostMeta bpld
       , HH.p [ HP.classes [ H.ClassName "post-description" ] ]
           [ HH.text bpld.description ]
+      , renderTagList bpld.tags
       , HH.small_ [ postLink bpld "Read More" ]
       ]
 

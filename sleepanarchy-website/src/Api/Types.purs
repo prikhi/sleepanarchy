@@ -30,10 +30,13 @@ instance decodeDateTime :: DecodeJson ApiDateTime where
 type BlogSidebar =
   { recent :: Array BlogRecentPost
   , archive :: Array BlogArchiveListItem
+  , tags :: Array BlogTag
   }
 
 type BlogRecentPost =
-  { title :: String, slug :: String }
+  { title :: String
+  , slug :: String
+  }
 
 newtype BlogArchiveListItem =
   BlogArchiveListItem
@@ -55,6 +58,11 @@ instance decodeJsonBlogArchiveListItem :: DecodeJson BlogArchiveListItem where
     parseEnum errMsg i =
       note (TypeMismatch $ errMsg <> ": " <> show i) $ toEnum i
 
+type BlogTag =
+  { tag :: String
+  , count :: Int
+  }
+
 type BlogPostList =
   { posts :: Array BlogPostListItem
   , sidebar :: BlogSidebar
@@ -67,6 +75,7 @@ type BlogPostListItem =
   , createdAt :: ApiDateTime
   , updatedAt :: ApiDateTime
   , publishedAt :: ApiDateTime
+  , tags :: Array String
   }
 
 type BlogPostDetails =
@@ -75,5 +84,6 @@ type BlogPostDetails =
   , createdAt :: ApiDateTime
   , updatedAt :: ApiDateTime
   , publishedAt :: ApiDateTime
+  , tags :: Array String
   , sidebar :: BlogSidebar
   }
