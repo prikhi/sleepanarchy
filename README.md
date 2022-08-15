@@ -15,6 +15,7 @@ Currently migrting from Python/Django/Mezzanine.
 * Blog Posts
     * Paginated list route
     * Cache sidebar data - bust/regen on post create/edit
+    * Category sidebar data
     * Archive post list(posts within some @YYYY-MM@)
     * Categories & Tags(maybe just tags?) post lists
     * Prev/Next links on details page

@@ -41,6 +41,9 @@ BlogPost
     slug Text
     description Text
     content Text
+    -- TODO: ditch this for custom PostgresTextArray type?
+    -- Lets us process once on save instead of every fetch
+    tags Text
     createdAt UTCTime
     updatedAt UTCTime
     publishedAt UTCTime Maybe

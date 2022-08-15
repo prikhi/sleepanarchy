@@ -27,12 +27,15 @@ import           App
 import           Models.DB
 import           Utils                          ( prefixToJSON )
 
+import qualified Data.Text                     as T
+
 
 -- SIDEBAR
 
 data BlogSidebarData = BlogSidebarData
     { bsdRecent  :: [BlogRecentPostData]
     , bsdArchive :: [BlogArchiveYearData]
+    , bsdTags    :: [BlogTagData]
     }
     deriving (Show, Read, Eq, Ord, Generic)
 
@@ -50,6 +53,11 @@ instance ToSample BlogSidebarData where
                        , BlogArchiveYearData 2022 1 42
                        , BlogArchiveYearData 2020 6 9001
                        , BlogArchiveYearData 2012 5 1
+                       ]
+        , bsdTags    = [ BlogTagData "Augment"    10
+                       , BlogTagData "Haskell"    42
+                       , BlogTagData "Purescript" 9001
+                       , BlogTagData "Wordpress"  1
                        ]
         }
 
@@ -72,6 +80,15 @@ data BlogArchiveYearData = BlogArchiveYearData
 instance ToJSON BlogArchiveYearData where
     toJSON = prefixToJSON "bayd"
 
+data BlogTagData = BlogTagData
+    { btdTag   :: Text
+    , btdCount :: Int
+    }
+    deriving (Show, Read, Eq, Ord, Generic)
+
+instance ToJSON BlogTagData where
+    toJSON = prefixToJSON "btd"
+
 
 -- | TODO: This should be cached in a TVar that lives in Config type.
 -- Regenerate it on bootup, after creating or updating a Post. Expose
@@ -86,13 +103,23 @@ getBlogSidebarData = do
     let archiveQuery = [r|
             SELECT
                 DATE_PART('year', published_at) AS year,
-                DATE_PART('month', published_at) as month,
+                DATE_PART('month', published_at) AS month,
                 COUNT(*)
-                FROM blog_post
-                GROUP BY year, month
+            FROM blog_post
+            GROUP BY year, month
             |]
         mkArchive (Single y, Single m, Single c) = BlogArchiveYearData y m c
     bsdArchive <- map mkArchive <$> rawSql archiveQuery []
+    let tagQuery = [r|
+            SELECT
+                TRIM(FROM UNNEST(STRING_TO_ARRAY(tags, ','))) AS tag,
+                COUNT(*)
+            FROM blog_post
+            GROUP BY tag
+            ORDER BY tag ASC
+            |]
+        mkTag (Single t, Single c) = BlogTagData t c
+    bsdTags <- map mkTag <$> rawSql tagQuery []
     return BlogSidebarData { .. }
 
 
@@ -115,6 +142,7 @@ instance ToSample BlogPostList where
 data BlogPostListData = BlogPostListData
     { bpldTitle       :: Text
     , bpldSlug        :: Text
+    , bpldTags        :: [Text]
     , bpldCreatedAt   :: UTCTime
     , bpldUpdatedAt   :: UTCTime
     , bpldPublishedAt :: UTCTime
@@ -129,6 +157,7 @@ instance ToSample BlogPostListData where
     toSamples _ = singleSample $ BlogPostListData
         "Some Post Title"
         "some-post-title"
+        ["tag1", "tag two"]
         (UTCTime (fromGregorian 2022 04 20) 0)
         (UTCTime (fromGregorian 2022 04 20) 0)
         (UTCTime (fromGregorian 2022 04 20) 0)
@@ -147,6 +176,7 @@ getBlogPosts = runDB $ do
     mkPostData (Entity _ BlogPost {..}) = BlogPostListData
         { bpldTitle       = blogPostTitle
         , bpldSlug        = blogPostSlug
+        , bpldTags        = mkTagList blogPostTags
         , bpldCreatedAt   = blogPostCreatedAt
         , bpldUpdatedAt   = blogPostUpdatedAt
         , bpldPublishedAt = fromJust blogPostPublishedAt
@@ -162,6 +192,7 @@ data BlogPostDetails = BlogPostDetails
     , bpdCreatedAt   :: UTCTime
     , bpdUpdatedAt   :: UTCTime
     , bpdPublishedAt :: UTCTime
+    , bpdTags        :: [Text]
     , bpdContent     :: Text
     , bpdSidebar     :: BlogSidebarData
     }
@@ -177,6 +208,7 @@ instance ToSample BlogPostDetails where
         (UTCTime (fromGregorian 2022 04 20) 0)
         (UTCTime (fromGregorian 2022 04 20) 0)
         (UTCTime (fromGregorian 2022 04 20) 0)
+        ["Haskell", "PHP", "Package Management"]
         "I am the post's content"
         (head $ map snd $ toSamples $ Proxy @BlogSidebarData)
 
@@ -193,6 +225,13 @@ getBlogPost slug = runDB (getBy (UniqueBlogPost slug)) >>= \case
                                    , bpdSlug      = blogPostSlug
                                    , bpdCreatedAt = blogPostCreatedAt
                                    , bpdUpdatedAt = blogPostUpdatedAt
+                                   , bpdTags      = mkTagList blogPostTags
                                    , bpdContent   = blogPostContent
                                    , ..
                                    }
+
+
+-- UTILS
+
+mkTagList :: Text -> [Text]
+mkTagList = filter (not . T.null) . map T.strip . T.splitOn ","

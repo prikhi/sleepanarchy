@@ -31,6 +31,7 @@ data NewBlogPost = NewBlogPost
     , nbpSlug        :: Maybe Text
     , nbpDescription :: Maybe Text
     , nbpContent     :: Text
+    , nbpTags        :: Text
     , nbpPublish     :: Bool
     }
     deriving (Show, Read, Eq, Ord, Generic)
@@ -48,6 +49,7 @@ instance ToSample NewBlogPost where
                         Nothing
                         Nothing
                         "The markdown\n\n---\n\ncontent of the post."
+                        "comma, separated, list of tags"
                         False
           )
         , ( "Custom description & slug"
@@ -55,6 +57,7 @@ instance ToSample NewBlogPost where
                         (Just "a-custom-slug")
                         (Just "customized description text")
                         "The body of the post"
+                        ""
                         True
           )
         ]
@@ -70,6 +73,7 @@ createBlogPost uid NewBlogPost {..} = do
             , blogPostSlug        = slug
             , blogPostDescription = description
             , blogPostContent     = nbpContent
+            , blogPostTags        = nbpTags
             , blogPostCreatedAt   = now
             , blogPostUpdatedAt   = now
             , blogPostPublishedAt = if nbpPublish then Just now else Nothing
