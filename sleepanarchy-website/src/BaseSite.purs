@@ -20,13 +20,13 @@ import Web.UIEvent.MouseEvent as ME
 -- | distinct page type and switches on the stored Route to determine which to
 -- | render. It accepts route updates from outside the Halogen environment.
 component
-  :: forall i o m
+  :: forall o m
    . GetTime m
   => ApiRequest m
   => Navigation m
-  => H.Component Query i o m
+  => H.Component Query Route o m
 component = H.mkComponent
-  { initialState: const initial
+  { initialState: initial
   , render
   , eval: H.mkEval $ H.defaultEval
       { handleQuery = handleQuery
@@ -60,9 +60,9 @@ _viewBlogPost = Proxy
 -- | stored within the various `Page.*` module componets.
 type State = { currentPage :: Route, currentDate :: Date }
 
-initial :: State
-initial =
-  { currentPage: Home
+initial :: Route -> State
+initial route =
+  { currentPage: route
   , currentDate: canonicalDate bottom bottom bottom
   }
 

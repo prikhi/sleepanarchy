@@ -4,6 +4,7 @@ import Prelude
 
 import App (AppEnv(..), runAppM)
 import BaseSite as BaseSite
+import Data.Either (fromRight)
 import Data.Maybe (Maybe)
 import Effect (Effect)
 import Effect.Aff (Aff, launchAff_)
@@ -12,18 +13,21 @@ import Effect.Console (info)
 import Halogen as H
 import Halogen.Aff as HA
 import Halogen.VDom.Driver (runUI)
-import Router (Route, router)
+import Router (Route(..), router)
+import Routing (match)
 import Routing.PushState (makeInterface, matches)
 
 main :: Effect Unit
 main = do
   nav <- makeInterface
+  initialPath <- _.pathname <$> nav.locationState
+  let initialRoute = fromRight NotFound $ match router initialPath
   let env = Env { nav }
   HA.runHalogenAff do
     liftEffect $ info "Sleepanarchy.com Purescript Client Starting Up..."
     body <- HA.awaitBody
     let app = H.hoist (flip runAppM env) BaseSite.component
-    driver <- runUI app unit body
+    driver <- runUI app initialRoute body
     liftEffect <<< void $ matches router (handlePathChange driver) nav
   where
   -- Send the 'UpdateRoute' query to the Halogen app whenever the URL changes.
