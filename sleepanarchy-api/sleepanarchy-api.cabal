@@ -46,8 +46,10 @@ library
       DataKinds
       DeriveGeneric
       LambdaCase
+      MonoLocalBinds
       NamedFieldPuns
       OverloadedStrings
+      QuasiQuotes
       TupleSections
       TypeApplications
       TypeOperators
@@ -66,6 +68,7 @@ library
     , password
     , persistent
     , persistent-postgresql
+    , raw-strings-qq
     , resource-pool
     , servant
     , servant-auth
@@ -88,8 +91,10 @@ executable sleepanarchy-api
       DataKinds
       DeriveGeneric
       LambdaCase
+      MonoLocalBinds
       NamedFieldPuns
       OverloadedStrings
+      QuasiQuotes
       TupleSections
       TypeApplications
       TypeOperators
@@ -111,8 +116,10 @@ executable sleepanarchy-api-management
       DataKinds
       DeriveGeneric
       LambdaCase
+      MonoLocalBinds
       NamedFieldPuns
       OverloadedStrings
+      QuasiQuotes
       TupleSections
       TypeApplications
       TypeOperators
@@ -142,8 +149,10 @@ test-suite sleepanarchy-api-test
       DataKinds
       DeriveGeneric
       LambdaCase
+      MonoLocalBinds
       NamedFieldPuns
       OverloadedStrings
+      QuasiQuotes
       TupleSections
       TypeApplications
       TypeOperators

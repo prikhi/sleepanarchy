@@ -46,8 +46,10 @@ default-extensions:
     - DataKinds
     - DeriveGeneric
     - LambdaCase
+    - MonoLocalBinds
     - NamedFieldPuns
     - OverloadedStrings
+    - QuasiQuotes
     - TupleSections
     - TypeApplications
     - TypeOperators
@@ -73,6 +75,7 @@ library:
         - password
         - persistent
         - persistent-postgresql
+        - raw-strings-qq
         - resource-pool
         - servant
         - servant-auth

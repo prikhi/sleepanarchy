@@ -9,10 +9,18 @@ Currently migrting from Python/Django/Mezzanine.
 
 ### SERVER
 
+* General
+    * DB migration files & mgmt(e.g., soda)
+    * Sitemap
 * Blog Posts
     * Paginated list route
-    * Categories & Tags(maybe just tags?)
+    * Cache sidebar data - bust/regen on post create/edit
+    * Archive post list(posts within some @YYYY-MM@)
+    * Categories & Tags(maybe just tags?) post lists
+    * Prev/Next links on details page
     * Admin: Get/Update post routes
+        * Re-evaluate description auto-generation(take first paragraph & render
+          markdown?)
     * Admin: Publish post route?
 * Link Dump
     * DB Model
@@ -27,7 +35,6 @@ Currently migrting from Python/Django/Mezzanine.
     * Admin: Get folders / files
     * Admin: Create folder
     * Admin: Upload file
-* Sitemap
 
 
 ### CLIENT
@@ -38,6 +45,11 @@ Currently migrting from Python/Django/Mezzanine.
         * On index.html
         * Update on page changes
     * robots.txt
+    * unify json & http errors instead of coercing to string
+    * switch api data from `Maybe (Either ...)` to `RemoteData`
+    * standardize rendering of notasked/loading/error/success api data
+    * store & render previous page on page change, delay rendering of loading
+      state by some ms to prevent quick flash
 * Styling - check post styling after adding markdown rendering
 * Blog Posts
     * render post bodies as markdown

@@ -17,13 +17,15 @@ import           Servant.Docs
 import           Servant.Docs.Internal.Pretty
 import           Servant.Server                 ( Application
                                                 , Context(..)
+                                                , Handler
                                                 , Server
                                                 , hoistServerWithContext
                                                 , serveWithContext
                                                 )
 
 import           Api.Routes
-import           App                            ( Config(cfgJwk)
+import           App                            ( App
+                                                , Config(cfgJwk)
                                                 , runApp
                                                 )
 
@@ -42,10 +44,12 @@ apiServer :: Config -> Server (ServerAPI :<|> DocsAPI)
 apiServer cfg =
     hoistServerWithContext appApi
                            (Proxy @'[CookieSettings , JWTSettings])
-                           readerToHandler
+                           appToHandler
                            api
         :<|> return (pack $ markdown apiDocs)
-    where readerToHandler = flip runReaderT cfg . runApp
+  where
+    appToHandler :: App a -> Handler a
+    appToHandler = flip runReaderT cfg . runApp
 
 app :: Config -> Application
 app cfg = serveWithContext

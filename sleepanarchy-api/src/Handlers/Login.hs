@@ -1,5 +1,4 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE MonoLocalBinds #-}
 module Handlers.Login where
 
 import           Control.Monad.IO.Class         ( MonadIO(..) )
