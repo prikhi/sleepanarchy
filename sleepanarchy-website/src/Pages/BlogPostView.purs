@@ -6,14 +6,18 @@ import Prelude
 
 import Api (class ApiRequest, blogPostDetailsRequest)
 import Api.Types (BlogPostDetails)
+import App (class Navigation, newUrl)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import Router (Route(..))
 import Utils (showDate)
+import Views.Blog (renderBlogSidebar)
+import Web.UIEvent.MouseEvent as ME
 
-page :: forall q o m. ApiRequest m => H.Component q String o m
+page :: forall q o m. ApiRequest m => Navigation m => H.Component q String o m
 page =
   H.mkComponent
     { initialState
@@ -30,17 +34,25 @@ type State =
 initialState :: String -> State
 initialState slug = { slug, apiData: Nothing }
 
-data Action = Initialize
+data Action
+  = Initialize
+  | ViewPost String ME.MouseEvent
 
 handleAction
-  :: forall o m. ApiRequest m => Action -> H.HalogenM State Action () o m Unit
+  :: forall o m
+   . ApiRequest m
+  => Navigation m
+  => Action
+  -> H.HalogenM State Action () o m Unit
 handleAction = case _ of
   Initialize -> do
     slug <- H.gets _.slug
     response <- H.lift $ blogPostDetailsRequest slug
     H.modify_ _ { apiData = Just response }
+  ViewPost slug event ->
+    H.lift $ newUrl (ViewBlogPost slug) $ Just event
 
-render :: forall w i. State -> HH.HTML w i
+render :: forall w. State -> HH.HTML w Action
 render = _.apiData >>> case _ of
   Nothing ->
     HH.div_ [ HH.text "Loading..." ]
@@ -61,4 +73,5 @@ render = _.apiData >>> case _ of
           , HH.div [ HP.classes [ H.ClassName "post-content" ] ]
               [ HH.text resp.content ]
           ]
+      , renderBlogSidebar ViewPost resp.sidebar
       ]
