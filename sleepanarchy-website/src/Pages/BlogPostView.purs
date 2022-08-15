@@ -47,15 +47,18 @@ render = _.apiData >>> case _ of
   Just (Left e) ->
     HH.div_ [ HH.text $ "Error making request: " <> e ]
   Just (Right resp) ->
-    HH.div [ HP.classes [ H.ClassName "post-details" ] ]
-      [ HH.h1 [ HP.classes [ H.ClassName "post-title" ] ] [ HH.text resp.title ]
-      , HH.div
-          [ HP.classes [ H.ClassName "post-meta" ] ]
-          [ HH.text $ "Posted on " <> showDate resp.publishedAt
-          , if resp.publishedAt /= resp.updatedAt then
-              HH.text $ " | Updated on " <> showDate resp.updatedAt
-            else HH.text ""
+    HH.div [ HP.classes [ H.ClassName "blog-page" ] ]
+      [ HH.div [ HP.classes [ H.ClassName "post-details" ] ]
+          [ HH.h1 [ HP.classes [ H.ClassName "post-title" ] ]
+              [ HH.text resp.title ]
+          , HH.div
+              [ HP.classes [ H.ClassName "post-meta" ] ]
+              [ HH.text $ "Posted on " <> showDate resp.publishedAt
+              , if resp.publishedAt /= resp.updatedAt then
+                  HH.text $ " | Updated on " <> showDate resp.updatedAt
+                else HH.text ""
+              ]
+          , HH.div [ HP.classes [ H.ClassName "post-content" ] ]
+              [ HH.text resp.content ]
           ]
-      , HH.div [ HP.classes [ H.ClassName "post-content" ] ]
-          [ HH.text resp.content ]
       ]

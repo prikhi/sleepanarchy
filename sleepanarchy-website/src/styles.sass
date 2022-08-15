@@ -17,6 +17,11 @@ $magenta: #F92672
 $body-background: $background
 $body-text: $near-white
 
+// Breakpoints
+$tablet: 480px
+$desktop: 720px
+$lg-desktop: 1400px
+
 /* Utility Classes */
 .text-center
   text-align: center
@@ -29,19 +34,28 @@ body
   margin: 0
   padding: 0
   font-size: 1rem
-  font-family: Sans
+  font-family: Helvetica, Arial, Sans
 
 body
   background-color: $body-background
   color: $body-text
 
+h1, h2, h3, h4, h5, h6
+  color: $magenta
+
+h4, h5, h6
+  font-weight: medium
+
 small
+  display: block
   font-size: 0.8em
 
 a, a:visited
   color: $orange
-  font-weight: bold
+  transition: 0.2s color
   text-decoration: none
+  &:hover
+    color: lighten($orange, 15%)
 
 /* Page Layout */
 
@@ -105,20 +119,51 @@ div#root
     flex-grow: 1
 
     max-width: 95%
-    @media screen and (min-width: 360px)
+    @media screen and (min-width: $tablet)
       max-width: 90%
-    @media screen and (min-width: 1400px)
+    @media screen and (min-width: $desktop)
+      max-width: 85%
+    @media screen and (min-width: $lg-desktop)
       max-width: 1250px
 
 
 /* Blog */
 
+div.blog-page
+  display: flex
+  flex-direction: row
+  flex-wrap: wrap
+  @media screen and (min-width: $desktop)
+    flex-wrap: nowrap
+
+div.blog-sidebar
+  font-size: 0.85rem
+  padding: 0.75rem
+  width: 100%
+  @media screen and (min-width: $desktop)
+    width: 25%
+  ul
+    list-style: none
+    padding-left: 0
+    margin: 0.25rem 0 1rem
+    li
+      margin-bottom: 0.2rem
+  h4
+    margin-top: 0.25rem
+    margin-bottom: 0.25rem
+  h5
+    margin: 0.1rem 0
+
 div.post-list, div.post-details
+  width: 100%
+  @media screen and (min-width: $desktop)
+    width: 75%
+    margin-right: 2rem
   div.post-meta
     font-size: 0.85rem
-    color: $magenta
+    color: $orange
   .post-title
-    color: $green
+    font-weight: normal
     > a
       color: $green
 
@@ -137,7 +182,7 @@ div.post-list
     color: $magenta
 
   p.post-description
-    margin-bottom: 1rem
+    margin-bottom: 0.5rem
 
 div.post-details
   h1.post-title
@@ -145,5 +190,5 @@ div.post-details
 
   div.post-meta
     padding-bottom: 1rem
-    border-bottom: 1px solid $magenta
+    border-bottom: 1px solid $light-blue
     margin-bottom: 1.5rem

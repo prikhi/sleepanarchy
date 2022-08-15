@@ -29,11 +29,13 @@ to generate this file without the comments in this block.
   , "halogen"
   , "maybe"
   , "now"
+  , "orders"
   , "parsing"
   , "prelude"
   , "routing"
   , "strings"
   , "transformers"
+  , "tuples"
   , "web-events"
   , "web-uievents"
   ]

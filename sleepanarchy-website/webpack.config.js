@@ -108,6 +108,7 @@ module.exports = (env, _) => {
         },
         optimization: {
             runtimeChunk: "single",
+            usedExports: true,
             minimizer: ["...", new CssMinimizerPlugin()],
         },
         stats: {
