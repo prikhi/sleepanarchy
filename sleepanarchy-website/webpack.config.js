@@ -1,9 +1,11 @@
 const path = require("path");
 const { spawn, spawnSync } = require("node:child_process");
 
-const HtmlWebpackPlugin = require("html-webpack-plugin");
-const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
+const HtmlWebpackPlugin = require("html-webpack-plugin");
+const ImageMinimizerWebpackPlugin = require("image-minimizer-webpack-plugin");
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const WebpackFavicons = require("webpack-favicons");
 
 class SpagoWatchWebpackPlugin {
     watchPid = null;
@@ -92,6 +94,25 @@ module.exports = (env, _) => {
             new MiniCssExtractPlugin({
                 filename: "[name].[contenthash].css",
                 chunkFilename: "[id].[contenthash].css",
+            }),
+            new WebpackFavicons({
+                src: "src/favicon.svg",
+                appName: "Sleep Anarchy",
+                background: "#1b1d1e",
+                theme_color: "#1b1d1e",
+                icons: {
+                    favicons: true,
+                    android: true,
+                    appleIcon: true,
+                },
+            }),
+            new ImageMinimizerWebpackPlugin({
+                minimizer: {
+                    implementation: ImageMinimizerWebpackPlugin.imageminMinify,
+                    options: {
+                        plugins: [["optipng", { optimizationLevel: 7 }]],
+                    },
+                },
             }),
         ],
         devServer: {

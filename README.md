@@ -41,7 +41,6 @@ Currently migrting from Python/Django/Mezzanine.
 ### CLIENT
 
 * General
-    * Favicon
     * Page Title, SEO, structured meta-data
         * On index.html for initial load
         * Update on page changes(send effect after api data loads?)
@@ -54,7 +53,7 @@ Currently migrting from Python/Django/Mezzanine.
         * BaseSite should create & subscribe to an emitter on init. When we get
           a route change message from pushstate, move currentPage to
           previousPage state field, set new currentPage, and fork thread that
-          delays by 125ms & then sends the "still waiting" message via the
+          delays by ~50ms & then sends the "still waiting" message via the
           emitter. "Still waiting" should clear the previousPage from the
           state. When rendering, if previousPage exists, render that instead of
           the current page.
