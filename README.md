@@ -13,11 +13,10 @@ Currently migrting from Python/Django/Mezzanine.
     * DB migration files & mgmt(e.g., soda)
     * Sitemap
 * Blog Posts
-    * Paginated list route
+    * Paginated list route?
     * Cache sidebar data - bust/regen on post create/edit
     * Category sidebar data
-    * Archive post list(posts within some @YYYY-MM@)
-    * Categories & Tags(maybe just tags?) post lists
+    * Categories post lists
     * Prev/Next links on details page
     * Admin: Get/Update post routes
         * Re-evaluate description auto-generation(take first paragraph & render
@@ -28,10 +27,11 @@ Currently migrting from Python/Django/Mezzanine.
     * Fetch Route
     * Admin: Create category
     * Admin: Add Link
+    * Admin: Delete Link
 * Pastes
     * Decide to keep or ditch this
 * Media
-    * DB Model(folders + files)
+    * DB Model(folders + files)? Or just introspect filesystem?
     * Passthrough public endpoint to filesystem(Development env only)
     * Admin: Get folders / files
     * Admin: Create folder
@@ -55,7 +55,8 @@ Currently migrting from Python/Django/Mezzanine.
 * Blog Posts
     * render post bodies as markdown
     * published date formatting(X days ago)
-    * Sidebar(recent + archive + feeds?)
+    * Sidebar(categories + feeds?)
+    * 404 page
 * Link Dump page + redirect
 * Admin site
     * add/edit/delete posts

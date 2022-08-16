@@ -62,6 +62,8 @@ apiEndpointDocs :: ExtraInfo (Pretty ServerAPI)
 apiEndpointDocs = blogNotes <> loginNotes
 
 
+-- LOGIN
+
 type LoginAPI
     = AddSetCookiesApi
           ( 'S ( 'S 'Z))
@@ -80,14 +82,18 @@ loginNotes = mkEndpointNotes @LoginAPI @ServerAPI
     )
 
 
+-- BLOG
+
 type BlogAPI =
          "blog" :> "posts" :> Get '[JSON] BlogPostList
-    :<|> "blog" :> "post" :> Capture "slug" Text :> Get '[JSON] BlogPostDetails
+    :<|> "blog" :> "posts" :> "archive" :> Capture "year" Integer :> Capture "month" Int :> Get '[JSON] BlogPostList
+    :<|> "blog" :> "posts" :> "tag" :> Capture "tagSlug" Text :> Get '[JSON] BlogPostList
+    :<|> "blog" :> "post" :> Capture "postSlug" Text :> Get '[JSON] BlogPostDetails
 
 blogNotes :: ExtraInfo (Pretty ServerAPI)
 blogNotes =
     mkEndpointNotes
-        @( "blog" :> "post" :> Capture "slug" Text :> Get '[JSON] BlogPostDetails
+        @( "blog" :> "post" :> Capture "postSlug" Text :> Get '[JSON] BlogPostDetails
         )
         @ServerAPI
         ( "Throws"
@@ -96,8 +102,14 @@ blogNotes =
         )
 
 blogApi :: ServerT BlogAPI App
-blogApi = getBlogPosts :<|> getBlogPost
+blogApi =
+    getBlogPosts
+        :<|> getBlogPostsArchive
+        :<|> getBlogPostsForTag
+        :<|> getBlogPost
 
+
+-- ADMIN
 
 type AdminAPI
     = "admin" :> "blog" :> "post" :> ReqBody '[JSON] NewBlogPost :> Post '[JSON] BlogPostId
@@ -111,12 +123,25 @@ adminApi = \case
 
 -- ORPHANS
 
-instance ToCapture (Capture "slug" Text) where
-    toCapture _ = DocCapture "slug" "slugified title of desired entity"
+instance ToCapture (Capture "postSlug" Text) where
+    toCapture _ = DocCapture "postSlug" "slug field of a BlogPost"
 
+instance ToCapture (Capture "tagSlug" Text) where
+    toCapture _ = DocCapture
+        "tagSlug"
+        "lowercased BlogPost tag with spaces replaced with hyphens"
+
+instance ToCapture (Capture "year" Integer) where
+    toCapture _ = DocCapture "year" "a four-digit year as an integer"
+
+instance ToCapture (Capture "month" Int) where
+    toCapture _ = DocCapture "month" "a month by it's number"
+
+-- TODO: MR to upstream servant-docs repo?
 instance FromJSON a => MimeUnrender PrettyJSON a where
     mimeUnrender _ = eitherDecodeLenient
 
+-- TODO: MR to upstream servant-docs repo?
 instance ToSample SetCookie where
     toSamples _ =
         [ ("JWT" , defaultSetCookie { setCookieName = "JWT-Cookie" })

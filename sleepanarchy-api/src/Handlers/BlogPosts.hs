@@ -7,7 +7,9 @@ import           Data.Maybe                     ( fromJust )
 import           Data.Proxy                     ( Proxy(..) )
 import           Data.Text                      ( Text )
 import           Data.Time                      ( UTCTime(..)
+                                                , addDays
                                                 , fromGregorian
+                                                , gregorianMonthLength
                                                 )
 import           Database.Persist
 import           Database.Persist.Sql           ( Single(..)
@@ -163,25 +165,58 @@ instance ToSample BlogPostListData where
         (UTCTime (fromGregorian 2022 04 20) 0)
         "Custom description text for the post or the first paragraph."
 
+mkPostData :: Entity BlogPost -> BlogPostListData
+mkPostData (Entity _ BlogPost {..}) = BlogPostListData
+    { bpldTitle       = blogPostTitle
+    , bpldSlug        = blogPostSlug
+    , bpldTags        = mkTagList blogPostTags
+    , bpldCreatedAt   = blogPostCreatedAt
+    , bpldUpdatedAt   = blogPostUpdatedAt
+    , bpldPublishedAt = fromJust blogPostPublishedAt
+    , bpldDescription = blogPostDescription
+    }
 
+
+-- | All Blog Posts
 getBlogPosts :: DB m => m BlogPostList
-getBlogPosts = runDB $ do
-    bplPosts <- map mkPostData <$> selectList
-        [BlogPostPublishedAt !=. Nothing]
-        [Desc BlogPostPublishedAt]
+getBlogPosts = runDB $ getBlogPostList [BlogPostPublishedAt !=. Nothing]
+
+-- | Blog Posts by Year-Month
+getBlogPostsArchive :: DB m => Integer -> Int -> m BlogPostList
+getBlogPostsArchive year month =
+    let firstDayOfMonth     = fromGregorian year month 1
+        firstDayOfNextMonth = addDays 1
+            $ fromGregorian year month (gregorianMonthLength year month)
+    in  runDB $ getBlogPostList
+            [ BlogPostPublishedAt >=. Just (UTCTime firstDayOfMonth 0)
+            , BlogPostPublishedAt <=. Just (UTCTime firstDayOfNextMonth 0)
+            ]
+
+-- | Blog Posts with given slugified tag.
+getBlogPostsForTag :: DB m => Text -> m BlogPostList
+getBlogPostsForTag tag =
+    let cleanedTag = T.replace " " "-" $ T.toLower $ T.strip tag
+    in  runDB $ do
+            bplPosts <- map mkPostData <$> rawSql
+                [r|
+                    SELECT ??
+                    FROM blog_post
+                    WHERE ? IN (
+                        SELECT ((REGEXP_REPLACE(LOWER(TRIM(FROM tag)),' ', '-')))
+                        FROM UNNEST(STRING_TO_ARRAY(tags, ',')) AS tag
+                    )
+                |]
+                [toPersistValue cleanedTag]
+            bplSidebar <- getBlogSidebarData
+            return BlogPostList { .. }
+
+-- | Generic data fetcher for a BlogPost list route with an arbitrary set
+-- of filters.
+getBlogPostList :: MonadIO m => [Filter BlogPost] -> SqlPersistT m BlogPostList
+getBlogPostList filters = do
+    bplPosts <- map mkPostData <$> selectList filters [Desc BlogPostPublishedAt]
     bplSidebar <- getBlogSidebarData
     return BlogPostList { .. }
-  where
-    mkPostData :: Entity BlogPost -> BlogPostListData
-    mkPostData (Entity _ BlogPost {..}) = BlogPostListData
-        { bpldTitle       = blogPostTitle
-        , bpldSlug        = blogPostSlug
-        , bpldTags        = mkTagList blogPostTags
-        , bpldCreatedAt   = blogPostCreatedAt
-        , bpldUpdatedAt   = blogPostUpdatedAt
-        , bpldPublishedAt = fromJust blogPostPublishedAt
-        , bpldDescription = blogPostDescription
-        }
 
 
 -- DETAILS
