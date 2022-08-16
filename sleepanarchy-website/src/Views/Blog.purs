@@ -1,3 +1,5 @@
+{- | Helper rendering functions for the Blog pages.
+-}
 module Views.Blog where
 
 import Prelude
@@ -5,17 +7,20 @@ import Prelude
 import Api.Types
   ( ApiDateTime
   , BlogArchiveListItem(..)
+  , BlogPostList
+  , BlogPostListItem
   , BlogRecentPost
   , BlogSidebar
   , BlogTag
   )
-import Data.Array (foldMap, groupBy, null, sortBy)
+import Data.Array (foldMap, groupBy, intersperse, null, sortBy)
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.Array.NonEmpty as NonEmptyArray
 import Data.Bifunctor (bimap)
 import Data.Enum (fromEnum)
 import Data.Function (on)
 import Data.Int (toNumber)
+import Data.Maybe (Maybe(..))
 import Data.Newtype (unwrap)
 import Data.Ord.Down (Down(..))
 import Data.Ord.Max (Max(..))
@@ -29,8 +34,53 @@ import Router (Route(..), navLinkAttr)
 import Utils (showDate)
 import Web.UIEvent.MouseEvent as ME
 
+-- | Render a list of blog posts with an optional page heading.
+renderBlogPostList
+  :: forall w a
+   . (Route -> ME.MouseEvent -> a)
+  -> BlogPostList
+  -> Maybe String
+  -> HH.HTML w a
+renderBlogPostList linkAction listData pageHeader =
+  HH.div [ HP.classes [ H.ClassName "post-list" ] ]
+    $ withHeader
+    $ handleBlank
+    $ intersperse (HH.hr [ HP.classes [ H.ClassName "post-separator" ] ])
+    $ map renderBlogPost listData.posts
+  where
+  withHeader :: forall x i. Array (HH.HTML x i) -> Array (HH.HTML x i)
+  withHeader = case pageHeader of
+    Nothing -> identity
+    Just headerText -> \content ->
+      [ HH.h1_ [ HH.text headerText ] ] <> content
+
+  handleBlank :: forall x i. Array (HH.HTML x i) -> Array (HH.HTML x i)
+  handleBlank items
+    | null items =
+        [ HH.p_ [ HH.text "No posts found." ] ]
+    | otherwise =
+        items
+
+  renderBlogPost :: forall x. BlogPostListItem -> HH.HTML x a
+  renderBlogPost bpld =
+    HH.div_
+      [ HH.h2 [ HP.classes [ H.ClassName "post-title" ] ]
+          [ postLink bpld bpld.title ]
+      , renderPostMeta bpld
+      , HH.p [ HP.classes [ H.ClassName "post-description" ] ]
+          [ HH.text bpld.description ]
+      , renderTagList linkAction bpld.tags
+      , HH.small_ [ postLink bpld "Read More" ]
+      ]
+
+  postLink :: forall r x. { slug :: String | r } -> String -> HH.HTML x a
+  postLink { slug } text =
+    HH.a (navLinkAttr linkAction $ ViewBlogPost slug)
+      [ HH.text text ]
+
+-- | Render the sidebar for the Blog pages.
 renderBlogSidebar
-  :: forall w a. (String -> ME.MouseEvent -> a) -> BlogSidebar -> HH.HTML w a
+  :: forall w a. (Route -> ME.MouseEvent -> a) -> BlogSidebar -> HH.HTML w a
 renderBlogSidebar linkAction { archive, recent, tags } =
   HH.div [ HP.classes [ H.ClassName "blog-sidebar" ] ]
     [ renderRecentBlock recent
@@ -40,7 +90,8 @@ renderBlogSidebar linkAction { archive, recent, tags } =
   where
   postLink :: forall r y. { slug :: String | r } -> String -> HH.HTML y a
   postLink { slug } text =
-    HH.a (navLinkAttr (ViewBlogPost slug) $ linkAction slug) [ HH.text text ]
+    HH.a (navLinkAttr linkAction $ ViewBlogPost slug)
+      [ HH.text text ]
 
   renderRecentBlock :: Array BlogRecentPost -> HH.HTML w a
   renderRecentBlock items =
@@ -49,7 +100,7 @@ renderBlogSidebar linkAction { archive, recent, tags } =
       , HH.ul_ $ map (\i -> HH.li_ [ postLink i i.title ]) items
       ]
 
-  renderArchiveBlock :: forall y i. Array BlogArchiveListItem -> HH.HTML y i
+  renderArchiveBlock :: forall y. Array BlogArchiveListItem -> HH.HTML y a
   renderArchiveBlock items =
     let
       groupedItems = items
@@ -63,7 +114,7 @@ renderBlogSidebar linkAction { archive, recent, tags } =
         ]
 
   renderArchiveYear
-    :: forall y i. NonEmptyArray BlogArchiveListItem -> HH.HTML y i
+    :: forall y. NonEmptyArray BlogArchiveListItem -> HH.HTML y a
   renderArchiveYear yearItems =
     let
       year = (\(BlogArchiveListItem i) -> i.year) $ NonEmptyArray.head
@@ -74,16 +125,17 @@ renderBlogSidebar linkAction { archive, recent, tags } =
         , HH.ul_ $ NonEmptyArray.toArray $ renderArchiveMonth <$> yearItems
         ]
 
-  renderArchiveMonth :: forall y i. BlogArchiveListItem -> HH.HTML y i
+  renderArchiveMonth :: forall y. BlogArchiveListItem -> HH.HTML y a
   renderArchiveMonth (BlogArchiveListItem bali) =
     HH.li_
-      [ HH.text $ show bali.month
+      [ HH.a (navLinkAttr linkAction $ ViewBlogArchive bali.year bali.month)
+          [ HH.text $ show bali.month ]
       , HH.text " ("
       , HH.text $ show bali.count
       , HH.text ")"
       ]
 
-  tagBlock :: forall y i. HH.HTML y i
+  tagBlock :: forall y. HH.HTML y a
   tagBlock
     | null tags = HH.text ""
     | otherwise =
@@ -123,18 +175,24 @@ renderBlogSidebar linkAction { archive, recent, tags } =
       -- render the calculated size with @rem@ units.
       show fontSize <> "rem;"
 
-  renderTag :: forall y i. (Int -> String) -> BlogTag -> HH.HTML y i
+  renderTag :: forall y. (Int -> String) -> BlogTag -> HH.HTML y a
   renderTag mkFontSize { tag, count } =
     let
       fontSize = mkFontSize count
     in
       HH.li [ HP.classes [ H.ClassName "blog-tag" ] ]
-        [ HH.span
-            [ HP.style $ "font-size: " <> fontSize <> "; height: " <> fontSize ]
+        [ HH.a
+            ( navLinkAttr linkAction (ViewBlogTag tag) <>
+                [ HP.style $ "font-size: " <> fontSize <> "; height: " <>
+                    fontSize
+                ]
+            )
             [ HH.text tag ]
         , HH.text $ " (" <> show count <> ")"
         ]
 
+-- | Render the Published date for a post. Include the updated date if it has
+-- | been updated since being published.
 renderPostMeta
   :: forall r w i
    . { publishedAt :: ApiDateTime, updatedAt :: ApiDateTime | r }
@@ -142,14 +200,20 @@ renderPostMeta
 renderPostMeta post = HH.div
   [ HP.classes [ H.ClassName "post-meta" ] ]
   [ HH.text $ "Posted on " <> showDate post.publishedAt
-  , if post.publishedAt /= post.updatedAt then
+  , if post.publishedAt < post.updatedAt then
       HH.text $ " | Updated on " <> showDate post.updatedAt
     else HH.text ""
   ]
 
-renderTagList :: forall w i. Array String -> HH.HTML w i
-renderTagList tags =
+-- | Render a list of tags for a post.
+renderTagList
+  :: forall w a. (Route -> ME.MouseEvent -> a) -> Array String -> HH.HTML w a
+renderTagList navigateAction tags =
   HH.small [ HP.classes [ H.ClassName "blog-tag-list" ] ]
     [ HH.text "Tags:"
-    , HH.ul_ $ map (\t -> HH.li_ [ HH.text t ]) tags
+    , HH.ul_ $ map
+        ( \t -> HH.li_
+            [ HH.a (navLinkAttr navigateAction $ ViewBlogTag t) [ HH.text t ] ]
+        )
+        tags
     ]

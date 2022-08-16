@@ -7,10 +7,13 @@ import App (class GetTime, class Navigation, getToday, newUrl)
 import Data.Date (Date, canonicalDate, year)
 import Data.Enum (fromEnum)
 import Data.Maybe (Maybe(..))
+import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import Pages.BlogPostArchive as BlogPostArchive
 import Pages.BlogPostList as BlogPostList
+import Pages.BlogPostTag as BlogPostTag
 import Pages.BlogPostView as BlogPostView
 import Router (Route(..), navLinkAttr)
 import Type.Proxy (Proxy(..))
@@ -48,6 +51,8 @@ data Action
 type Slots =
   ( homePageSlot :: forall query. H.Slot query Void Unit
   , viewBlogPostSlot :: forall query. H.Slot query Void String
+  , viewBlogArchiveSlot :: forall query. H.Slot query Void BlogPostArchive.Input
+  , viewBlogTagSlot :: forall query. H.Slot query Void BlogPostTag.Input
   )
 
 _homePage :: Proxy "homePageSlot"
@@ -55,6 +60,12 @@ _homePage = Proxy
 
 _viewBlogPost :: Proxy "viewBlogPostSlot"
 _viewBlogPost = Proxy
+
+_viewBlogArchive :: Proxy "viewBlogArchiveSlot"
+_viewBlogArchive = Proxy
+
+_viewBlogPostTag :: Proxy "viewBlogTagSlot"
+_viewBlogPostTag = Proxy
 
 -- | The base app only cares about the current page & date, all other state is
 -- | stored within the various `Page.*` module componets.
@@ -109,9 +120,7 @@ renderHeader currentPage =
       if route == currentPage then [ H.ClassName "active" ] else []
     navLink text route =
       HH.a
-        ( (navLinkAttr route (NavClick route)) <>
-            [ HP.classes (activePageClass route) ]
-        )
+        ((navLinkAttr NavClick route) <> [ HP.classes (activePageClass route) ])
         [ HH.text text ]
   in
     HH.nav [ HP.class_ $ HH.ClassName "header" ]
@@ -171,6 +180,11 @@ renderPage = pageWrapper <<< case _ of
     HH.slot_ _homePage unit BlogPostList.page unit
   ViewBlogPost slug ->
     HH.slot_ _viewBlogPost slug BlogPostView.page slug
+  ViewBlogArchive year month ->
+    HH.slot_ _viewBlogArchive (Tuple year month) BlogPostArchive.page
+      (Tuple year month)
+  ViewBlogTag slug ->
+    HH.slot_ _viewBlogPostTag slug BlogPostTag.page slug
   page ->
     HH.h1_ [ HH.text $ show page ]
   where

@@ -12,7 +12,7 @@ import Data.Maybe (Maybe(..))
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Router (Route(..))
+import Router (Route)
 import Views.Blog (renderBlogSidebar, renderPostMeta, renderTagList)
 import Web.UIEvent.MouseEvent as ME
 
@@ -35,7 +35,7 @@ initialState slug = { slug, apiData: Nothing }
 
 data Action
   = Initialize
-  | ViewPost String ME.MouseEvent
+  | Navigate Route ME.MouseEvent
 
 handleAction
   :: forall o m
@@ -48,8 +48,8 @@ handleAction = case _ of
     slug <- H.gets _.slug
     response <- H.lift $ blogPostDetailsRequest slug
     H.modify_ _ { apiData = Just response }
-  ViewPost slug event ->
-    H.lift $ newUrl (ViewBlogPost slug) $ Just event
+  Navigate route event ->
+    H.lift $ newUrl route $ Just event
 
 render :: forall w. State -> HH.HTML w Action
 render = _.apiData >>> case _ of
@@ -65,7 +65,7 @@ render = _.apiData >>> case _ of
           , renderPostMeta resp
           , HH.div [ HP.classes [ H.ClassName "post-content" ] ]
               [ HH.text resp.content ]
-          , renderTagList resp.tags
+          , renderTagList Navigate resp.tags
           ]
-      , renderBlogSidebar ViewPost resp.sidebar
+      , renderBlogSidebar Navigate resp.sidebar
       ]

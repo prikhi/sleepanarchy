@@ -17,6 +17,7 @@ import Parsing (parseErrorMessage)
 data ApiDateTime = ApiDateTime DateTime
 
 derive instance eqApiDateTime :: Eq ApiDateTime
+derive instance ordApiDateTime :: Ord ApiDateTime
 
 instance decodeDateTime :: DecodeJson ApiDateTime where
   decodeJson json = do

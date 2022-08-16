@@ -42,23 +42,36 @@ Currently migrting from Python/Django/Mezzanine.
 
 * General
     * Favicon
-    * SEO, structured meta-data
-        * On index.html
-        * Update on page changes
+    * Page Title, SEO, structured meta-data
+        * On index.html for initial load
+        * Update on page changes(send effect after api data loads?)
     * robots.txt
     * unify json & http errors instead of coercing to string
     * switch api data from `Maybe (Either ...)` to `RemoteData`
     * standardize rendering of notasked/loading/error/success api data
     * store & render previous page on page change, delay rendering of loading
       state by some ms to prevent quick flash
+        * BaseSite should create & subscribe to an emitter on init. When we get
+          a route change message from pushstate, move currentPage to
+          previousPage state field, set new currentPage, and fork thread that
+          delays by 125ms & then sends the "still waiting" message via the
+          emitter. "Still waiting" should clear the previousPage from the
+          state. When rendering, if previousPage exists, render that instead of
+          the current page.
+        * can we have a wrapper we insert before the `mkEval` call on Page
+          components that looks at `apiData` in the page's state & sends a
+          message to the BaseSite parent when the field goes from Loading to
+          Success or Error? This message should clear the "previous page" so
+          that the current page is rendered.
 * Styling - check post styling after adding markdown rendering
 * Blog Posts
     * render post bodies as markdown
     * published date formatting(X days ago)
-    * Sidebar(categories + feeds?)
+    * more sidebar sections (categories + feeds?)
     * 404 page
 * Link Dump page + redirect
 * Admin site
+    * login page
     * add/edit/delete posts
     * add/edit/delete links & categories
     * browse media directory, create folders, upload & delete files
