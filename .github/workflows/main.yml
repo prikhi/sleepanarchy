@@ -118,4 +118,4 @@ jobs:
           cache: npm
           cache-dependency-path: sleepanarchy-website/package-lock.json
       - run: cd sleepanarchy-website && npm ci
-      - run: cd sleepanarchy-website && npm build
+      - run: cd sleepanarchy-website && npm run build
