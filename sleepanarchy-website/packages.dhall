@@ -145,8 +145,8 @@ in  upstream
         , "jest"
         ]
     , repo =
-        "https://github.com/prikhi/purescript-html-parser-halogen.git"
+        "https://github.com/rnons/purescript-html-parser-halogen.git"
     , version =
-        "4dd102b69990b0a070f5f5d0843d3abcd03d7265"
+        "035a51d02ba9f8b70c3ffd9fe31a3f5bed19941c"
 
     }
