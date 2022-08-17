@@ -103,3 +103,50 @@ let upstream =
         sha256:60eee64b04ca0013fae3e02a69fc3b176105c6baa2f31865c67cd5f881a412fd
 
 in  upstream
+  with markdown-it =
+    { dependencies =
+        [ "effect"
+        , "prelude"
+        , "psci-support"
+        , "foldable-traversable"
+        , "foreign"
+        , "tuples"
+        , "jest"
+        , "node-process"
+        , "options"
+        ]
+    , repo =
+        "https://github.com/nonbili/purescript-markdown-it.git"
+    , version =
+        "f6e8ee91298f2fc13c4277e75a19e0538de5f7a2"
+    }
+  with jest =
+    { dependencies =
+        [ "effect"
+        , "aff"
+        , "aff-promise"
+        ]
+    , repo =
+        "https://github.com/nonbili/purescript-jest.git"
+    , version =
+        "v1.0.0"
+    }
+  with html-parser-halogen =
+    { dependencies =
+        [ "arrays"
+        , "control"
+        , "dom-indexed"
+        , "foldable-traversable"
+        , "effect"
+        , "halogen"
+        , "maybe"
+        , "prelude"
+        , "psci-support"
+        , "jest"
+        ]
+    , repo =
+        "https://github.com/prikhi/purescript-html-parser-halogen.git"
+    , version =
+        "4dd102b69990b0a070f5f5d0843d3abcd03d7265"
+
+    }

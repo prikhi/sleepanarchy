@@ -18,6 +18,11 @@ Currently migrting from Python/Django/Mezzanine.
     * Category sidebar data
     * Categories post lists
     * Prev/Next links on details page
+    * Serverside rendering of markdown -> html w/ syntax highlighting?
+        * Doing syntax highlighting for _all_ languages add 1MB to the client
+          size(300KB -> 1.4MB). We've pared down the languages to a subset to
+          keep the size reasonable for now _but_ we could just use pandoc to
+          render the markdown w/ pygments & only include the style css.
     * Admin: Get/Update post routes
         * Re-evaluate description auto-generation(take first paragraph & render
           markdown?)
@@ -64,7 +69,6 @@ Currently migrting from Python/Django/Mezzanine.
           that the current page is rendered.
 * Styling - check post styling after adding markdown rendering
 * Blog Posts
-    * render post bodies as markdown
     * published date formatting(X days ago)
     * more sidebar sections (categories + feeds?)
     * 404 page

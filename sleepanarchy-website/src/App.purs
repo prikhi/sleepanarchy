@@ -6,6 +6,12 @@ module App
   , getNav
   , class Navigation
   , newUrl
+  , class HasMarkdown
+  , getMarkdown
+  , class Markdown
+  , renderMarkdown
+  , renderMarkdownUnsafe
+  , mkMarkdownInstance
   , class GetTime
   , getToday
   ) where
@@ -21,12 +27,18 @@ import Control.Monad.Reader
   )
 import Data.Date (Date)
 import Data.Maybe (Maybe)
+import Data.Options ((:=))
 import Data.Traversable (for)
+import Effect (Effect)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Now (nowDate)
+import Effect.Unsafe (unsafePerformEffect)
 import Foreign (unsafeToForeign)
+import Highlight as Highlight
+import MarkdownIt (MarkdownIt)
+import MarkdownIt as Markdown
 import Router (Route, reverse)
 import Routing.PushState (PushStateInterface)
 import Web.Event.Event (preventDefault)
@@ -54,7 +66,11 @@ derive newtype instance monadReaderAppM :: MonadReader AppEnv AppM
 -- APP ENVIRONMENT
 
 -- | Runtime values used by the app.
-data AppEnv = Env { nav :: PushStateInterface }
+data AppEnv =
+  Env
+    { nav :: PushStateInterface
+    , md :: MarkdownIt
+    }
 
 -- NAVIGATION
 
@@ -79,6 +95,41 @@ instance navigationHasNav ::
     void $ for mbEvent $ ME.toEvent >>> preventDefault >>> liftEffect
     nav <- asks getNav
     liftEffect $ nav.pushState (unsafeToForeign {}) $ reverse url
+
+-- MARKDOWN
+
+class HasMarkdown a where
+  getMarkdown :: a -> MarkdownIt
+
+instance hasMarkdownAppEnv :: HasMarkdown AppEnv where
+  getMarkdown (Env e) = e.md
+
+class Monad m <= Markdown m where
+  -- | Render the given Markdown String into an HTML String
+  renderMarkdown :: String -> m String
+
+instance markdownHasMarkdown ::
+  ( HasMarkdown env
+  , MonadAsk env m
+  , MonadEffect m
+  ) =>
+  Markdown m where
+  renderMarkdown mdString = do
+    md <- asks getMarkdown
+    liftEffect $ Markdown.render md mdString
+
+-- | Build a markdown renderer for use throughout the app.
+mkMarkdownInstance :: Effect MarkdownIt
+mkMarkdownInstance = Markdown.newMarkdownIt Markdown.CommonMark $
+  (Markdown.html := true)
+    <> (Markdown.typographer := true)
+    <> (Markdown.highlight := Highlight.highlight)
+
+-- | Unsafely render some markdown into an HTML string.
+renderMarkdownUnsafe :: String -> String
+renderMarkdownUnsafe str = unsafePerformEffect $ do
+  renderer <- mkMarkdownInstance
+  Markdown.render renderer str
 
 -- DATES
 

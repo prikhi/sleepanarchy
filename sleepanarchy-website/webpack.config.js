@@ -60,7 +60,7 @@ module.exports = (env, _) => {
         mode: "development",
         entry: {
             index: "./index.js",
-            styles: "./src/styles.sass",
+            styles: ["highlight.js/styles/monokai.css", "./src/styles.sass"],
         },
         output: {
             filename: "[name].[contenthash].js",
@@ -78,6 +78,15 @@ module.exports = (env, _) => {
                             : "style-loader",
                         "css-loader",
                         "sass-loader",
+                    ],
+                },
+                {
+                    test: /\.css$/i,
+                    use: [
+                        isProduction
+                            ? MiniCssExtractPlugin.loader
+                            : "style-loader",
+                        "css-loader",
                     ],
                 },
             ],
@@ -130,6 +139,9 @@ module.exports = (env, _) => {
         optimization: {
             runtimeChunk: "single",
             usedExports: true,
+            splitChunks: {
+                chunks: "all",
+            },
             minimizer: ["...", new CssMinimizerPlugin()],
         },
         stats: {

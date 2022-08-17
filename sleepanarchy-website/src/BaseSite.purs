@@ -3,7 +3,7 @@ module BaseSite (Query(..), component) where
 import Prelude
 
 import Api (class ApiRequest)
-import App (class GetTime, class Navigation, getToday, newUrl)
+import App (class GetTime, class Markdown, class Navigation, getToday, newUrl)
 import Data.Date (Date, canonicalDate, year)
 import Data.Enum (fromEnum)
 import Data.Maybe (Maybe(..))
@@ -27,6 +27,7 @@ component
    . GetTime m
   => ApiRequest m
   => Navigation m
+  => Markdown m
   => H.Component Query Route o m
 component = H.mkComponent
   { initialState: initial
@@ -102,6 +103,7 @@ render
   :: forall m
    . ApiRequest m
   => Navigation m
+  => Markdown m
   => State
   -> H.ComponentHTML Action Slots m
 render { currentPage, currentDate } =
@@ -173,6 +175,7 @@ renderPage
   :: forall a m
    . ApiRequest m
   => Navigation m
+  => Markdown m
   => Route
   -> H.ComponentHTML a Slots m
 renderPage = pageWrapper <<< case _ of
