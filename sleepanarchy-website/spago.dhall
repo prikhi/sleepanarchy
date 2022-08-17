@@ -32,6 +32,7 @@ to generate this file without the comments in this block.
   , "lists"
   , "markdown-it"
   , "maybe"
+  , "media-types"
   , "newtype"
   , "now"
   , "options"

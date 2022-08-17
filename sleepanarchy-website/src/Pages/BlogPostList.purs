@@ -4,7 +4,7 @@ module Pages.BlogPostList (page) where
 
 import Prelude
 
-import Api (class ApiRequest, blogPostListRequest)
+import Api (class ApiRequest, blogPostListRequest, ApiError, renderApiError)
 import Api.Types (BlogPostList)
 import App (class Navigation, newUrl)
 import Data.Either (Either(..))
@@ -29,7 +29,7 @@ page =
     }
 
 type State =
-  { apiData :: Maybe (Either String BlogPostList)
+  { apiData :: Maybe (Either ApiError BlogPostList)
   }
 
 initialState :: forall i. i -> State
@@ -57,7 +57,7 @@ render = _.apiData >>> case _ of
   Nothing ->
     HH.div_ [ HH.text "Loading..." ]
   Just (Left e) ->
-    HH.div_ [ HH.text $ "Error making request: " <> e ]
+    HH.div_ [ HH.text $ "Error making request. " <> renderApiError e ]
   Just (Right resp) ->
     HH.div [ HP.classes [ H.ClassName "blog-page" ] ]
       [ renderBlogPostList Navigate resp Nothing

@@ -4,7 +4,7 @@ module Pages.BlogPostArchive (page, Input) where
 
 import Prelude
 
-import Api (class ApiRequest, blogPostArchiveRequest)
+import Api (class ApiRequest, ApiError, blogPostArchiveRequest, renderApiError)
 import Api.Types (BlogPostList)
 import App (class Navigation, newUrl)
 import Data.Date (Month, Year)
@@ -31,7 +31,7 @@ type Input = Tuple Year Month
 
 type State =
   { date :: Tuple Year Month
-  , apiData :: Maybe (Either String BlogPostList)
+  , apiData :: Maybe (Either ApiError BlogPostList)
   }
 
 initialState :: Input -> State
@@ -60,7 +60,7 @@ render { apiData, date } = case apiData of
   Nothing ->
     HH.div_ [ HH.text "Loading..." ]
   Just (Left e) ->
-    HH.div_ [ HH.text $ "Error making request: " <> e ]
+    HH.div_ [ HH.text $ "Error making request. " <> renderApiError e ]
   Just (Right resp) ->
     let
       headerText = Just $ "Post Archive: " <> show (snd date) <> ", " <> show

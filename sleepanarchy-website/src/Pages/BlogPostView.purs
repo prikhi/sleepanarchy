@@ -4,15 +4,9 @@ module Pages.BlogPostView (page) where
 
 import Prelude
 
-import Api (class ApiRequest, blogPostDetailsRequest)
+import Api (class ApiRequest, ApiError, blogPostDetailsRequest, renderApiError)
 import Api.Types (BlogPostDetails)
-import App
-  ( class Markdown
-  , class Navigation
-  , newUrl
-  , renderMarkdown
-  , renderMarkdownUnsafe
-  )
+import App (class Markdown, class Navigation, newUrl, renderMarkdown, renderMarkdownUnsafe)
 import Data.Either (Either(..), hush)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Traversable (for)
@@ -40,7 +34,7 @@ page =
 
 type State =
   { slug :: String
-  , apiData :: Maybe (Either String BlogPostDetails)
+  , apiData :: Maybe (Either ApiError BlogPostDetails)
   , renderedContent :: Maybe String
   }
 
@@ -72,7 +66,7 @@ render st = case st.apiData of
   Nothing ->
     HH.div_ [ HH.text "Loading..." ]
   Just (Left e) ->
-    HH.div_ [ HH.text $ "Error making request: " <> e ]
+    HH.div_ [ HH.text $ "Error making request. " <> renderApiError e ]
   Just (Right resp) ->
     HH.div [ HP.classes [ H.ClassName "blog-page" ] ]
       [ HH.div [ HP.classes [ H.ClassName "post-details" ] ]

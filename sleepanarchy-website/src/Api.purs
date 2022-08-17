@@ -2,15 +2,27 @@ module Api where
 
 import Prelude
 
+import Affjax (Error(..))
+import Affjax.RequestHeader as AXRH
 import Affjax.ResponseFormat as AXRF
+import Affjax.StatusCode (StatusCode(..))
 import Affjax.Web as AXW
 import Api.Types (BlogPostDetails, BlogPostList)
-import Data.Argonaut (class DecodeJson, Json, decodeJson, printJsonDecodeError)
-import Data.Bifunctor (bimap, lmap)
+import Control.Monad.Except (ExceptT(..), except, runExceptT, throwError)
+import Data.Argonaut
+  ( class DecodeJson
+  , JsonDecodeError
+  , decodeJson
+  , jsonParser
+  , printJsonDecodeError
+  )
+import Data.Bifunctor (lmap)
 import Data.Date (Month, Year)
 import Data.Either (Either)
 import Data.Enum (fromEnum)
+import Data.MediaType.Common (applicationJSON)
 import Effect.Aff.Class (class MonadAff, liftAff)
+import Foreign (ForeignError(..), unsafeToForeign)
 
 -- ENDPOINTS
 
@@ -33,14 +45,30 @@ endpointUrl = (<>) "/api" <<< case _ of
   BlogPostDetailsRequest slug ->
     "/blog/post/" <> slug
 
+-- ERRORS
+
+data ApiError
+  = HttpError AXW.Error
+  | StatusCodeError (AXW.Response String)
+  | JsonError JsonDecodeError
+
+renderApiError :: ApiError -> String
+renderApiError = case _ of
+  HttpError e -> AXW.printError e
+  JsonError e -> printJsonDecodeError e
+  StatusCodeError r -> "There was a problem with the response status: "
+    <> show r.status
+    <> " - "
+    <> r.body
+
 -- EFFECT MONAD
 
 -- | API requests the app can make.
 class Monad m <= ApiRequest m where
-  blogPostListRequest :: m (Either String BlogPostList)
-  blogPostArchiveRequest :: Year -> Month -> m (Either String BlogPostList)
-  blogPostTagRequest :: String -> m (Either String BlogPostList)
-  blogPostDetailsRequest :: String -> m (Either String BlogPostDetails)
+  blogPostListRequest :: m (Either ApiError BlogPostList)
+  blogPostArchiveRequest :: Year -> Month -> m (Either ApiError BlogPostList)
+  blogPostTagRequest :: String -> m (Either ApiError BlogPostList)
+  blogPostDetailsRequest :: String -> m (Either ApiError BlogPostDetails)
 
 instance appApiRequest :: MonadAff m => ApiRequest m where
   blogPostListRequest = getRequest BlogPostListRequest
@@ -51,17 +79,43 @@ instance appApiRequest :: MonadAff m => ApiRequest m where
 -- REQUEST HELPERS
 
 -- | Perform a GET request & decode the response as JSON.
+-- |
+-- | Note that we use a response format of string because errorful status code
+-- | response bodies may not decode to JSON but we want to throw a
+-- | StatusCodeError in those cases instead of a ResponseBodyError.
 getRequest
-  :: forall m a. MonadAff m => DecodeJson a => Endpoint -> m (Either String a)
-getRequest endpoint =
-  decodeResponse <$> liftAff (AXW.get AXRF.json $ endpointUrl endpoint)
+  :: forall m a. MonadAff m => DecodeJson a => Endpoint -> m (Either ApiError a)
+getRequest endpoint = runExceptT $ do
+  response <- ExceptT $ lmap HttpError <$> liftAff
+    ( AXW.request AXW.defaultRequest
+        { responseFormat = AXRF.string
+        , headers = [ AXRH.Accept applicationJSON ]
+        , url = endpointUrl endpoint
+        }
+    )
+  let (StatusCode responseCode) = response.status
+  if responseCode >= 400 then
+    throwError $ StatusCodeError response
+  else
+    except $ decodeResponse response
 
--- | Decode a JSON response & unify the HTTP & JSON errors as Strings.
+-- | Decode a JSON response & lift the error to 'ApiError'.
+-- |
+-- | Returns (HttpError ResponseBodyError) if parsing of the response body to
+-- | JSON fails.
+-- |
+-- | Returns JsonError if parsing of JSON to a given type fails.
 decodeResponse
   :: forall a
    . DecodeJson a
-  => Either AXW.Error (AXW.Response Json)
-  -> Either String a
-decodeResponse =
-  bimap AXW.printError (_.body >>> decodeJson >>> lmap printJsonDecodeError) >>>
-    join
+  => AXW.Response String
+  -> Either ApiError a
+decodeResponse response@{ body } = do
+  json <- lmap jsonParsingError $ jsonParser body
+  lmap JsonError $ decodeJson json
+  where
+  jsonParsingError :: String -> ApiError
+  jsonParsingError e =
+    HttpError $
+      ResponseBodyError (ForeignError e)
+        (response { body = unsafeToForeign body })

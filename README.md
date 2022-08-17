@@ -52,7 +52,6 @@ Currently migrting from Python/Django/Mezzanine.
         * On index.html for initial load
         * Update on page changes(send effect after api data loads?)
     * robots.txt
-    * unify json & http errors instead of coercing to string
     * switch api data from `Maybe (Either ...)` to `RemoteData`
     * standardize rendering of notasked/loading/error/success api data
     * store & render previous page on page change, delay rendering of loading

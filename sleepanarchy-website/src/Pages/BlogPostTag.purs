@@ -4,7 +4,7 @@ module Pages.BlogPostTag (page, Input) where
 
 import Prelude
 
-import Api (class ApiRequest, blogPostTagRequest)
+import Api (class ApiRequest, ApiError, blogPostTagRequest, renderApiError)
 import Api.Types (BlogPostList)
 import App (class Navigation, newUrl)
 import Data.Array (mapMaybe)
@@ -31,7 +31,7 @@ type Input = String
 
 type State =
   { slug :: String
-  , apiData :: Maybe (Either String BlogPostList)
+  , apiData :: Maybe (Either ApiError BlogPostList)
   }
 
 initialState :: Input -> State
@@ -70,7 +70,7 @@ render { apiData, slug } = case apiData of
   Nothing ->
     HH.div_ [ HH.text "Loading..." ]
   Just (Left e) ->
-    HH.div_ [ HH.text $ "Error making request: " <> e ]
+    HH.div_ [ HH.text $ "Error making request. " <> renderApiError e ]
   Just (Right resp) ->
     let
       unslugify =
