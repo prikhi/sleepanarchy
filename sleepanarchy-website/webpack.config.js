@@ -1,10 +1,12 @@
 const path = require("path");
 const { spawn, spawnSync } = require("node:child_process");
 
+const CspHtmlWebpackPlugin = require("csp-html-webpack-plugin");
 const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const ImageMinimizerWebpackPlugin = require("image-minimizer-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const { SubresourceIntegrityPlugin } = require("webpack-subresource-integrity");
 const WebpackFavicons = require("webpack-favicons");
 
 class SpagoWatchWebpackPlugin {
@@ -66,6 +68,7 @@ module.exports = (env, _) => {
             filename: "[name].[contenthash].js",
             path: path.resolve(__dirname, "dist"),
             publicPath: "/",
+            crossOriginLoading: "anonymous",
             clean: true,
         },
         module: {
@@ -92,6 +95,7 @@ module.exports = (env, _) => {
             ],
         },
         plugins: [
+            new SpagoWatchWebpackPlugin(),
             new HtmlWebpackPlugin({
                 title: "Sleep Anarchy",
                 meta: {
@@ -99,7 +103,27 @@ module.exports = (env, _) => {
                         "mw_vy86UEcJ1tGnIBEG_hs77Zy3mo6VYsRYe_FB7Igg",
                 },
             }),
-            new SpagoWatchWebpackPlugin(),
+            new SubresourceIntegrityPlugin({
+                hashFuncNames: ["sha512"],
+            }),
+            new CspHtmlWebpackPlugin(
+                {
+                    "connect-src": "'self'",
+                    "font-src": "'self'",
+                    "frame-src": "'self'",
+                    "img-src": "'self'",
+                    "object-src": "'none'",
+                    "script-src": "'self'",
+                    "style-src": ["'self'", "'unsafe-inline'"],
+                    "upgrade-insecure-requests": [],
+                },
+                {
+                    enabled: isProduction,
+                    nonceEnabled: {
+                        "style-src": false,
+                    },
+                }
+            ),
             new MiniCssExtractPlugin({
                 filename: "[name].[contenthash].css",
                 chunkFilename: "[id].[contenthash].css",
