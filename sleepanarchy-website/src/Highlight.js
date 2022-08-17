@@ -1,5 +1,6 @@
 import hljs from "highlight.js/lib/core";
 
+import apache from "highlight.js/lib/languages/apache";
 import bash from "highlight.js/lib/languages/bash";
 import c from "highlight.js/lib/languages/c";
 import css from "highlight.js/lib/languages/css";
@@ -10,6 +11,7 @@ import haskell from "highlight.js/lib/languages/haskell";
 import html from "highlight.js/lib/languages/xml";
 import javascript from "highlight.js/lib/languages/javascript";
 import json from "highlight.js/lib/languages/json";
+import less from "highlight.js/lib/languages/less";
 import nginx from "highlight.js/lib/languages/nginx";
 import nix from "highlight.js/lib/languages/nix";
 import php from "highlight.js/lib/languages/php";
@@ -19,6 +21,7 @@ import vim from "highlight.js/lib/languages/vim";
 import yaml from "highlight.js/lib/languages/yaml";
 
 const langs = [
+    [apache, "apache", "apacheconf"],
     [bash, "bash", "zsh"],
     [c, "c"],
     [css, "css"],
@@ -29,6 +32,7 @@ const langs = [
     [html, "html"],
     [javascript, "javascript"],
     [json, "json"],
+    [less, "less"],
     [nginx, "nginx"],
     [nix, "nix"],
     [php, "php"],
