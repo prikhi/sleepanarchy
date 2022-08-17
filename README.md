@@ -1,4 +1,7 @@
-# Sleepanarchy.com
+# SleepAnarchy.com
+
+[![SleepAnarchy.com CI Build Status](https://github.com/prikhi/sleepanarchy/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/prikhi/sleepanarchy/actions/workflows/main.yml)
+
 
 This repo contains the Haskell backend API server & Purescript client used to
 serve [sleepanarchy.com](https://sleepanarchy.com).
