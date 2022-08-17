@@ -15,8 +15,7 @@ Currently migrting from Python/Django/Mezzanine.
 * Blog Posts
     * Paginated list route?
     * Cache sidebar data - bust/regen on post create/edit
-    * Category sidebar data
-    * Categories post lists
+    * Categories - DB, post list, sidebar data
     * Prev/Next links on details page
     * Serverside rendering of markdown -> html w/ syntax highlighting?
         * Doing syntax highlighting for _all_ languages add 1MB to the client
@@ -34,7 +33,7 @@ Currently migrting from Python/Django/Mezzanine.
     * Admin: Add Link
     * Admin: Delete Link
 * Pastes
-    * Decide to keep or ditch this
+    * Decide to keep or ditch this? We link to a few pastes in our posts...
 * Media
     * DB Model(folders + files)? Or just introspect filesystem?
     * Passthrough public endpoint to filesystem(Development env only)
@@ -67,7 +66,6 @@ Currently migrting from Python/Django/Mezzanine.
           message to the BaseSite parent when the field goes from Loading to
           Success or Error? This message should clear the "previous page" so
           that the current page is rendered.
-* Styling - check post styling after adding markdown rendering
 * Blog Posts
     * published date formatting(X days ago)
     * more sidebar sections (categories + feeds?)
