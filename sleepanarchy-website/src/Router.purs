@@ -27,6 +27,7 @@ data Route
   | ViewBlogPost String
   | ViewBlogArchive Year Month
   | ViewBlogTag String
+  | ViewBlogCategory String
   | NotFound
 
 derive instance genericRoute :: Generic Route _
@@ -42,6 +43,7 @@ reverse = case _ of
   ViewBlogArchive year month -> "/archive/" <> show (fromEnum year) <> "/" <>
     show (fromEnum month)
   ViewBlogTag slug -> "/tag/" <> slugify slug
+  ViewBlogCategory slug -> "/category/" <> slug
   NotFound -> "/"
   where
   slugify :: String -> String
@@ -66,6 +68,7 @@ router =
     , ViewBlogPost <$> (lit "post" *> str) <* end
     , ViewBlogArchive <$> (lit "archive" *> enum) <*> enum <* end
     , ViewBlogTag <$> (lit "tag" *> str) <* end
+    , ViewBlogCategory <$> (lit "category" *> str) <* end
     , pure NotFound
     ]
 

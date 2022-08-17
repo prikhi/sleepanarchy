@@ -31,6 +31,7 @@ data Endpoint
   = BlogPostListRequest
   | BlogPostArchiveRequest Year Month
   | BlogPostTagRequest String
+  | BlogPostCategoryRequest String
   | BlogPostDetailsRequest String
 
 -- | Convert an API endpoint into it's URL, assuming a base path of `/api/`.
@@ -42,6 +43,8 @@ endpointUrl = (<>) "/api" <<< case _ of
     "/blog/posts/archive/" <> show (fromEnum y) <> "/" <> show (fromEnum m)
   BlogPostTagRequest slug ->
     "/blog/posts/tag/" <> slug
+  BlogPostCategoryRequest slug ->
+    "/blog/posts/category/" <> slug
   BlogPostDetailsRequest slug ->
     "/blog/post/" <> slug
 
@@ -68,12 +71,14 @@ class Monad m <= ApiRequest m where
   blogPostListRequest :: m (Either ApiError BlogPostList)
   blogPostArchiveRequest :: Year -> Month -> m (Either ApiError BlogPostList)
   blogPostTagRequest :: String -> m (Either ApiError BlogPostList)
+  blogPostCategoryRequest :: String -> m (Either ApiError BlogPostList)
   blogPostDetailsRequest :: String -> m (Either ApiError BlogPostDetails)
 
 instance appApiRequest :: MonadAff m => ApiRequest m where
   blogPostListRequest = getRequest BlogPostListRequest
   blogPostArchiveRequest y m = getRequest $ BlogPostArchiveRequest y m
   blogPostTagRequest = getRequest <<< BlogPostTagRequest
+  blogPostCategoryRequest = getRequest <<< BlogPostCategoryRequest
   blogPostDetailsRequest = getRequest <<< BlogPostDetailsRequest
 
 -- REQUEST HELPERS

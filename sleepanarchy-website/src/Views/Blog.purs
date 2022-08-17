@@ -7,10 +7,11 @@ import Prelude
 import Api.Types
   ( ApiDateTime
   , BlogArchiveListItem(..)
+  , BlogCategory
   , BlogPostList
   , BlogPostListItem
-  , BlogRecentPost
   , BlogSidebar
+  , BlogSidebarCategory
   , BlogTag
   )
 import Data.Array (foldMap, groupBy, intersperse, null, sortBy)
@@ -66,7 +67,7 @@ renderBlogPostList linkAction listData pageHeader =
     HH.div_
       [ HH.h2 [ HP.classes [ H.ClassName "post-title" ] ]
           [ postLink bpld bpld.title ]
-      , renderPostMeta bpld
+      , renderPostMeta linkAction bpld
       , HH.p [ HP.classes [ H.ClassName "post-description" ] ]
           [ HH.text bpld.description ]
       , renderTagList linkAction bpld.tags
@@ -81,29 +82,30 @@ renderBlogPostList linkAction listData pageHeader =
 -- | Render the sidebar for the Blog pages.
 renderBlogSidebar
   :: forall w a. (Route -> ME.MouseEvent -> a) -> BlogSidebar -> HH.HTML w a
-renderBlogSidebar linkAction { archive, recent, tags } =
+renderBlogSidebar linkAction { archive, recent, tags, categories } =
   HH.div [ HP.classes [ H.ClassName "blog-sidebar" ] ]
-    [ renderRecentBlock recent
-    , renderArchiveBlock archive
+    [ recentBlock
+    , archiveBlock
+    , categoryBlock
     , tagBlock
     ]
   where
+  recentBlock :: HH.HTML w a
+  recentBlock =
+    HH.div_
+      [ HH.h4_ [ HH.text "Recent Posts" ]
+      , HH.ul_ $ map (\i -> HH.li_ [ postLink i i.title ]) recent
+      ]
+
   postLink :: forall r y. { slug :: String | r } -> String -> HH.HTML y a
   postLink { slug } text =
     HH.a (navLinkAttr linkAction $ ViewBlogPost slug)
       [ HH.text text ]
 
-  renderRecentBlock :: Array BlogRecentPost -> HH.HTML w a
-  renderRecentBlock items =
-    HH.div_
-      [ HH.h4_ [ HH.text "Recent Posts" ]
-      , HH.ul_ $ map (\i -> HH.li_ [ postLink i i.title ]) items
-      ]
-
-  renderArchiveBlock :: forall y. Array BlogArchiveListItem -> HH.HTML y a
-  renderArchiveBlock items =
+  archiveBlock :: forall y. HH.HTML y a
+  archiveBlock =
     let
-      groupedItems = items
+      groupedItems = archive
         # sortBy
             (comparing \(BlogArchiveListItem i) -> Down $ Tuple i.year i.month)
         # groupBy (on (==) \(BlogArchiveListItem i) -> i.year)
@@ -133,6 +135,21 @@ renderBlogSidebar linkAction { archive, recent, tags } =
       , HH.text " ("
       , HH.text $ show bali.count
       , HH.text ")"
+      ]
+
+  categoryBlock :: forall y. HH.HTML y a
+  categoryBlock =
+    HH.div_
+      [ HH.h4_ [ HH.text "Categories" ]
+      , HH.ul [ HP.classes [ H.ClassName "blog-categories" ] ]
+          $ map renderCategory categories
+      ]
+
+  renderCategory :: forall y. BlogSidebarCategory -> HH.HTML y a
+  renderCategory { title, slug, count } =
+    HH.li_
+      [ HH.a (navLinkAttr linkAction $ ViewBlogCategory slug) [ HH.text title ]
+      , HH.text $ " (" <> show count <> ")"
       ]
 
   tagBlock :: forall y. HH.HTML y a
@@ -194,12 +211,21 @@ renderBlogSidebar linkAction { archive, recent, tags } =
 -- | Render the Published date for a post. Include the updated date if it has
 -- | been updated since being published.
 renderPostMeta
-  :: forall r w i
-   . { publishedAt :: ApiDateTime, updatedAt :: ApiDateTime | r }
-  -> HH.HTML w i
-renderPostMeta post = HH.div
+  :: forall r w a
+   . (Route -> ME.MouseEvent -> a)
+  -> { publishedAt :: ApiDateTime
+     , updatedAt :: ApiDateTime
+     , category :: BlogCategory
+     | r
+     }
+  -> HH.HTML w a
+renderPostMeta navigateAction post = HH.div
   [ HP.classes [ H.ClassName "post-meta" ] ]
-  [ HH.text $ "Posted on " <> showDate post.publishedAt
+  [ HH.text $ "Posted in "
+  , HH.a (navLinkAttr navigateAction (ViewBlogCategory post.category.slug))
+      [ HH.text post.category.title ]
+  , HH.text $ " on " <> showDate
+      post.publishedAt
   , if post.publishedAt < post.updatedAt then
       HH.text $ " | Updated on " <> showDate post.updatedAt
     else HH.text ""

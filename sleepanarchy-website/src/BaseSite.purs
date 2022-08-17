@@ -12,6 +12,7 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Pages.BlogPostArchive as BlogPostArchive
+import Pages.BlogPostCategory as BlogPostCategory
 import Pages.BlogPostList as BlogPostList
 import Pages.BlogPostTag as BlogPostTag
 import Pages.BlogPostView as BlogPostView
@@ -54,6 +55,8 @@ type Slots =
   , viewBlogPostSlot :: forall query. H.Slot query Void String
   , viewBlogArchiveSlot :: forall query. H.Slot query Void BlogPostArchive.Input
   , viewBlogTagSlot :: forall query. H.Slot query Void BlogPostTag.Input
+  , viewBlogCategorySlot ::
+      forall query. H.Slot query Void BlogPostCategory.Input
   )
 
 _homePage :: Proxy "homePageSlot"
@@ -67,6 +70,9 @@ _viewBlogArchive = Proxy
 
 _viewBlogPostTag :: Proxy "viewBlogTagSlot"
 _viewBlogPostTag = Proxy
+
+_viewBlogPostCategory :: Proxy "viewBlogCategorySlot"
+_viewBlogPostCategory = Proxy
 
 -- | The base app only cares about the current page & date, all other state is
 -- | stored within the various `Page.*` module componets.
@@ -188,6 +194,8 @@ renderPage = pageWrapper <<< case _ of
       (Tuple year month)
   ViewBlogTag slug ->
     HH.slot_ _viewBlogPostTag slug BlogPostTag.page slug
+  ViewBlogCategory slug ->
+    HH.slot_ _viewBlogPostCategory slug BlogPostCategory.page slug
   page ->
     HH.h1_ [ HH.text $ show page ]
   where

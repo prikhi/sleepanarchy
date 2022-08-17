@@ -71,7 +71,7 @@ Currently migrting from Python/Django/Mezzanine.
           that the current page is rendered.
 * Blog Posts
     * published date formatting(X days ago)
-    * more sidebar sections (categories + feeds?)
+    * Add feeds to sidebar? Or footer? Or both?
     * 404 page
 * Link Dump page + redirect
 * Admin site

@@ -6,7 +6,13 @@ import Prelude
 
 import Api (class ApiRequest, ApiError, blogPostDetailsRequest, renderApiError)
 import Api.Types (BlogPostDetails)
-import App (class Markdown, class Navigation, newUrl, renderMarkdown, renderMarkdownUnsafe)
+import App
+  ( class Markdown
+  , class Navigation
+  , newUrl
+  , renderMarkdown
+  , renderMarkdownUnsafe
+  )
 import Data.Either (Either(..), hush)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Traversable (for)
@@ -72,7 +78,7 @@ render st = case st.apiData of
       [ HH.div [ HP.classes [ H.ClassName "post-details" ] ]
           [ HH.h1 [ HP.classes [ H.ClassName "post-title" ] ]
               [ HH.text resp.title ]
-          , renderPostMeta resp
+          , renderPostMeta Navigate resp
           , HH.div [ HP.classes [ H.ClassName "post-content" ] ]
               [ RH.render_ $ fromMaybe (renderMarkdownUnsafe resp.content)
                   st.renderedContent

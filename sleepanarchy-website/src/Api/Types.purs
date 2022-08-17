@@ -32,6 +32,7 @@ type BlogSidebar =
   { recent :: Array BlogRecentPost
   , archive :: Array BlogArchiveListItem
   , tags :: Array BlogTag
+  , categories :: Array BlogSidebarCategory
   }
 
 type BlogRecentPost =
@@ -64,6 +65,17 @@ type BlogTag =
   , count :: Int
   }
 
+type BlogSidebarCategory =
+  { title :: String
+  , slug :: String
+  , count :: Int
+  }
+
+type BlogCategory =
+  { title :: String
+  , slug :: String
+  }
+
 type BlogPostList =
   { posts :: Array BlogPostListItem
   , sidebar :: BlogSidebar
@@ -77,6 +89,7 @@ type BlogPostListItem =
   , updatedAt :: ApiDateTime
   , publishedAt :: ApiDateTime
   , tags :: Array String
+  , category :: BlogCategory
   }
 
 type BlogPostDetails =
@@ -86,5 +99,6 @@ type BlogPostDetails =
   , updatedAt :: ApiDateTime
   , publishedAt :: ApiDateTime
   , tags :: Array String
+  , category :: BlogCategory
   , sidebar :: BlogSidebar
   }
