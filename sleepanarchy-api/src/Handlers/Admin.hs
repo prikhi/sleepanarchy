@@ -13,6 +13,7 @@ import           Data.Text                      ( Text )
 import           Data.Time                      ( getCurrentTime )
 import           Database.Persist.Sql           ( SqlPersistT
                                                 , insertUnique
+                                                , fromBackendKey
                                                 )
 import           GHC.Generics                   ( Generic )
 import           Servant.Docs                   ( ToSample(..) )
@@ -33,6 +34,7 @@ data NewBlogPost = NewBlogPost
     , nbpContent     :: Text
     , nbpTags        :: Text
     , nbpPublish     :: Bool
+    , nbpCategoryId  :: BlogCategoryId
     }
     deriving (Show, Read, Eq, Ord, Generic)
 
@@ -51,6 +53,7 @@ instance ToSample NewBlogPost where
                         "The markdown\n\n---\n\ncontent of the post."
                         "comma, separated, list of tags"
                         False
+                        (fromBackendKey 9001)
           )
         , ( "Custom description & slug"
           , NewBlogPost "My Post's Title"
@@ -59,6 +62,7 @@ instance ToSample NewBlogPost where
                         "The body of the post"
                         ""
                         True
+                        (fromBackendKey 42)
           )
         ]
 
@@ -78,6 +82,7 @@ createBlogPost uid NewBlogPost {..} = do
             , blogPostUpdatedAt   = now
             , blogPostPublishedAt = if nbpPublish then Just now else Nothing
             , blogPostAuthorId    = uid
+            , blogPostCategoryId  = nbpCategoryId
             }
     runDB $ do
         result <- insertUnique newPost

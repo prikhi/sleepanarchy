@@ -30,14 +30,17 @@ import           Models.DB
 import           Utils                          ( prefixToJSON )
 
 import qualified Data.Text                     as T
+import qualified Database.Esqueleto.Experimental
+                                               as E
 
 
 -- SIDEBAR
 
 data BlogSidebarData = BlogSidebarData
-    { bsdRecent  :: [BlogRecentPostData]
-    , bsdArchive :: [BlogArchiveYearData]
-    , bsdTags    :: [BlogTagData]
+    { bsdRecent     :: [BlogRecentPostData]
+    , bsdArchive    :: [BlogArchiveYearData]
+    , bsdTags       :: [BlogTagData]
+    , bsdCategories :: [BlogSidebarCategoryData]
     }
     deriving (Show, Read, Eq, Ord, Generic)
 
@@ -46,21 +49,26 @@ instance ToJSON BlogSidebarData where
 
 instance ToSample BlogSidebarData where
     toSamples _ = singleSample $ BlogSidebarData
-        { bsdRecent  =
+        { bsdRecent     =
             [ BlogRecentPostData "Newest Post"           "newest-post"
             , BlogRecentPostData "Second in line"        "second-in-line"
             , BlogRecentPostData "Oldest in limit query" "oldest-in-limit-query"
             ]
-        , bsdArchive = [ BlogArchiveYearData 2022 8 15
-                       , BlogArchiveYearData 2022 1 42
-                       , BlogArchiveYearData 2020 6 9001
-                       , BlogArchiveYearData 2012 5 1
-                       ]
-        , bsdTags    = [ BlogTagData "Augment"    10
-                       , BlogTagData "Haskell"    42
-                       , BlogTagData "Purescript" 9001
-                       , BlogTagData "Wordpress"  1
-                       ]
+        , bsdArchive    = [ BlogArchiveYearData 2022 8 15
+                          , BlogArchiveYearData 2022 1 42
+                          , BlogArchiveYearData 2020 6 9001
+                          , BlogArchiveYearData 2012 5 1
+                          ]
+        , bsdTags       = [ BlogTagData "Augment"    10
+                          , BlogTagData "Haskell"    42
+                          , BlogTagData "Purescript" 9001
+                          , BlogTagData "Wordpress"  1
+                          ]
+        , bsdCategories =
+            [ BlogSidebarCategoryData "Guides"     "guides"     9
+            , BlogSidebarCategoryData "Home Lab"   "home-lab"   2
+            , BlogSidebarCategoryData "Rave Saber" "rave-saber" 121
+            ]
         }
 
 data BlogRecentPostData = BlogRecentPostData
@@ -90,6 +98,16 @@ data BlogTagData = BlogTagData
 
 instance ToJSON BlogTagData where
     toJSON = prefixToJSON "btd"
+
+data BlogSidebarCategoryData = BlogSidebarCategoryData
+    { bscdTitle :: Text
+    , bscdSlug  :: Text
+    , bscdCount :: Int
+    }
+    deriving (Show, Read, Eq, Ord, Generic)
+
+instance ToJSON BlogSidebarCategoryData where
+    toJSON = prefixToJSON "bscd"
 
 
 -- | TODO: This should be cached in a TVar that lives in Config type.
@@ -122,7 +140,48 @@ getBlogSidebarData = do
             |]
         mkTag (Single t, Single c) = BlogTagData t c
     bsdTags <- map mkTag <$> rawSql tagQuery []
+    let categoryQuery = E.select $ do
+            (_ E.:& category) <-
+                E.from
+                $             E.table @BlogPost
+                `E.InnerJoin` E.table @BlogCategory
+                `E.on`        (\(post E.:& category) ->
+                                  (post E.^. BlogPostCategoryId)
+                                      E.==. (category E.^. BlogCategoryId)
+                              )
+            E.groupBy
+                ( category E.^. BlogCategoryTitle
+                , category E.^. BlogCategorySlug
+                )
+            E.orderBy [E.asc $ category E.^. BlogCategoryTitle]
+            E.having $ E.countRows @Int E.>. E.val 0
+            return
+                ( category E.^. BlogCategoryTitle
+                , category E.^. BlogCategorySlug
+                , E.countRows
+                )
+        mkCategory (E.Value t, E.Value s, E.Value c) =
+            BlogSidebarCategoryData t s c
+    bsdCategories <- map mkCategory <$> categoryQuery
     return BlogSidebarData { .. }
+
+
+-- CATEGORY
+
+data BlogCategoryData = BlogCategoryData
+    { bcdTitle :: Text
+    , bcdSlug  :: Text
+    }
+    deriving (Show, Read, Eq, Ord, Generic)
+
+instance ToJSON BlogCategoryData where
+    toJSON = prefixToJSON "bcd"
+
+mkCategoryData :: BlogCategory -> BlogCategoryData
+mkCategoryData BlogCategory {..} = BlogCategoryData
+    { bcdTitle = blogCategoryTitle
+    , bcdSlug  = blogCategorySlug
+    }
 
 
 -- LIST
@@ -145,6 +204,7 @@ data BlogPostListData = BlogPostListData
     { bpldTitle       :: Text
     , bpldSlug        :: Text
     , bpldTags        :: [Text]
+    , bpldCategory    :: BlogCategoryData
     , bpldCreatedAt   :: UTCTime
     , bpldUpdatedAt   :: UTCTime
     , bpldPublishedAt :: UTCTime
@@ -160,16 +220,18 @@ instance ToSample BlogPostListData where
         "Some Post Title"
         "some-post-title"
         ["tag1", "tag two"]
+        (BlogCategoryData "My Category" "my-category")
         (UTCTime (fromGregorian 2022 04 20) 0)
         (UTCTime (fromGregorian 2022 04 20) 0)
         (UTCTime (fromGregorian 2022 04 20) 0)
         "Custom description text for the post or the first paragraph."
 
-mkPostData :: Entity BlogPost -> BlogPostListData
-mkPostData (Entity _ BlogPost {..}) = BlogPostListData
+mkPostData :: Entity BlogPost -> Entity BlogCategory -> BlogPostListData
+mkPostData (Entity _ BlogPost {..}) (Entity _ category) = BlogPostListData
     { bpldTitle       = blogPostTitle
     , bpldSlug        = blogPostSlug
     , bpldTags        = mkTagList blogPostTags
+    , bpldCategory    = mkCategoryData category
     , bpldCreatedAt   = blogPostCreatedAt
     , bpldUpdatedAt   = blogPostUpdatedAt
     , bpldPublishedAt = fromJust blogPostPublishedAt
@@ -179,42 +241,78 @@ mkPostData (Entity _ BlogPost {..}) = BlogPostListData
 
 -- | All Blog Posts
 getBlogPosts :: DB m => m BlogPostList
-getBlogPosts = runDB $ getBlogPostList [BlogPostPublishedAt !=. Nothing]
+getBlogPosts = runDB . getBlogPostList $ \post ->
+    E.not_ $ E.isNothing $ post E.^. BlogPostPublishedAt
 
 -- | Blog Posts by Year-Month
 getBlogPostsArchive :: DB m => Integer -> Int -> m BlogPostList
 getBlogPostsArchive year month =
-    let firstDayOfMonth     = fromGregorian year month 1
+    let
+        firstDayOfMonth     = fromGregorian year month 1
         firstDayOfNextMonth = addDays 1
             $ fromGregorian year month (gregorianMonthLength year month)
-    in  runDB $ getBlogPostList
-            [ BlogPostPublishedAt >=. Just (UTCTime firstDayOfMonth 0)
-            , BlogPostPublishedAt <=. Just (UTCTime firstDayOfNextMonth 0)
-            ]
+    in
+        runDB . getBlogPostList $ \post ->
+            (post E.^. BlogPostPublishedAt E.>=. E.just
+                    (E.val (UTCTime firstDayOfMonth 0))
+                )
+                E.&&. (post E.^. BlogPostPublishedAt E.<=. E.just
+                          (E.val (UTCTime firstDayOfNextMonth 0))
+                      )
 
 -- | Blog Posts with given slugified tag.
 getBlogPostsForTag :: DB m => Text -> m BlogPostList
 getBlogPostsForTag tag =
     let cleanedTag = T.replace " " "-" $ T.toLower $ T.strip tag
     in  runDB $ do
-            bplPosts <- map mkPostData <$> rawSql
+            bplPosts <- map (uncurry mkPostData) <$> rawSql
                 [r|
-                    SELECT ??
+                    SELECT ??, ??
                     FROM blog_post
-                    WHERE ? IN (
-                        SELECT ((REGEXP_REPLACE(LOWER(TRIM(FROM tag)),' ', '-')))
-                        FROM UNNEST(STRING_TO_ARRAY(tags, ',')) AS tag
-                    )
+                    JOIN blog_category ON category_id=blog_category.id
+                    WHERE
+                        ? IN (
+                            SELECT ((REGEXP_REPLACE(LOWER(TRIM(FROM tag)),' ', '-')))
+                            FROM UNNEST(STRING_TO_ARRAY(tags, ',')) AS tag
+                        ) AND
+                        published_at IS NOT NULL
+
                 |]
                 [toPersistValue cleanedTag]
             bplSidebar <- getBlogSidebarData
             return BlogPostList { .. }
 
+-- | Blog Posts with given BlogCategory slug.
+getBlogPostsForCategory
+    :: (ThrowsError m, DB m, Monad m) => Text -> m BlogPostList
+getBlogPostsForCategory categorySlug =
+    runDB (getBy $ UniqueBlogCategory categorySlug) >>= \case
+        Nothing -> serverError err404
+            { errBody = "getBlogPostsForCategory: Category not found"
+            }
+        Just (Entity categoryId _) -> runDB . getBlogPostList $ \post ->
+            post E.^. BlogPostCategoryId E.==. E.val categoryId
+
+
 -- | Generic data fetcher for a BlogPost list route with an arbitrary set
 -- of filters.
-getBlogPostList :: MonadIO m => [Filter BlogPost] -> SqlPersistT m BlogPostList
+getBlogPostList
+    :: MonadIO m
+    => (E.SqlExpr (Entity BlogPost) -> E.SqlExpr (E.Value Bool))
+    -> SqlPersistT m BlogPostList
 getBlogPostList filters = do
-    bplPosts <- map mkPostData <$> selectList filters [Desc BlogPostPublishedAt]
+    bplPosts <- fmap (map $ uncurry mkPostData) $ E.select $ do
+        (post E.:& category) <-
+            E.from
+            $             E.table @BlogPost
+            `E.InnerJoin` E.table @BlogCategory
+            `E.on`        (\(post E.:& category) ->
+                              (post E.^. BlogPostCategoryId)
+                                  E.==. (category E.^. BlogCategoryId)
+                          )
+        E.where_ $ filters post
+        E.orderBy [E.desc $ post E.^. BlogPostPublishedAt]
+        return (post, category)
     bplSidebar <- getBlogSidebarData
     return BlogPostList { .. }
 
@@ -228,6 +326,7 @@ data BlogPostDetails = BlogPostDetails
     , bpdUpdatedAt   :: UTCTime
     , bpdPublishedAt :: UTCTime
     , bpdTags        :: [Text]
+    , bpdCategory    :: BlogCategoryData
     , bpdContent     :: Text
     , bpdSidebar     :: BlogSidebarData
     }
@@ -244,6 +343,7 @@ instance ToSample BlogPostDetails where
         (UTCTime (fromGregorian 2022 04 20) 0)
         (UTCTime (fromGregorian 2022 04 20) 0)
         ["Haskell", "PHP", "Package Management"]
+        (BlogCategoryData "Guides" "guides")
         "I am the post's content"
         (head $ map snd $ toSamples $ Proxy @BlogSidebarData)
 
@@ -254,13 +354,15 @@ getBlogPost slug = runDB (getBy (UniqueBlogPost slug)) >>= \case
     Just (Entity _ BlogPost {..}) -> case blogPostPublishedAt of
         Nothing ->
             serverError err404 { errBody = "getBlogPost: Post not found" }
-        Just bpdPublishedAt -> do
-            bpdSidebar <- runDB getBlogSidebarData
+        Just bpdPublishedAt -> runDB $ do
+            bpdSidebar <- getBlogSidebarData
+            category   <- fromJust <$> get blogPostCategoryId
             return BlogPostDetails { bpdTitle     = blogPostTitle
                                    , bpdSlug      = blogPostSlug
                                    , bpdCreatedAt = blogPostCreatedAt
                                    , bpdUpdatedAt = blogPostUpdatedAt
                                    , bpdTags      = mkTagList blogPostTags
+                                   , bpdCategory  = mkCategoryData category
                                    , bpdContent   = blogPostContent
                                    , ..
                                    }

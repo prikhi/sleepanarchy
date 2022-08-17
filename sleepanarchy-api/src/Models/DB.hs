@@ -48,7 +48,16 @@ BlogPost
     updatedAt UTCTime
     publishedAt UTCTime Maybe
     authorId UserId OnDeleteCascade
+    categoryId BlogCategoryId OnDeleteRestrict
     UniqueBlogPost slug
+    deriving Show Read Eq Ord Generic
+
+BlogCategory
+    title Text
+    slug Text
+    createdAt UTCTime
+    updatedAt UTCTime
+    UniqueBlogCategory slug
     deriving Show Read Eq Ord Generic
 
 |]

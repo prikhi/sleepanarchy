@@ -88,6 +88,7 @@ type BlogAPI =
          "blog" :> "posts" :> Get '[JSON] BlogPostList
     :<|> "blog" :> "posts" :> "archive" :> Capture "year" Integer :> Capture "month" Int :> Get '[JSON] BlogPostList
     :<|> "blog" :> "posts" :> "tag" :> Capture "tagSlug" Text :> Get '[JSON] BlogPostList
+    :<|> "blog" :> "posts" :> "category" :> Capture "categorySlug" Text :> Get '[JSON] BlogPostList
     :<|> "blog" :> "post" :> Capture "postSlug" Text :> Get '[JSON] BlogPostDetails
 
 blogNotes :: ExtraInfo (Pretty ServerAPI)
@@ -106,6 +107,7 @@ blogApi =
     getBlogPosts
         :<|> getBlogPostsArchive
         :<|> getBlogPostsForTag
+        :<|> getBlogPostsForCategory
         :<|> getBlogPost
 
 
@@ -130,6 +132,9 @@ instance ToCapture (Capture "tagSlug" Text) where
     toCapture _ = DocCapture
         "tagSlug"
         "lowercased BlogPost tag with spaces replaced with hyphens"
+
+instance ToCapture (Capture "categorySlug" Text) where
+    toCapture _ = DocCapture "categorySlug" "slug field of a BlogCategory"
 
 instance ToCapture (Capture "year" Integer) where
     toCapture _ = DocCapture "year" "a four-digit year as an integer"
