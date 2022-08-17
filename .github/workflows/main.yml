@@ -107,6 +107,7 @@ jobs:
         with:
           key: spago-${{ github.ref }}-${{ github.sha }}
           path: |
+            ~/.cache/spago
             sleepanarchy-website/.spago
             sleepanarchy-website/output
           restore-keys: |
