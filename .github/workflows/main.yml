@@ -117,5 +117,4 @@ jobs:
           node-version-file: sleepanarchy-website/.nvmrc
           cache: npm
           cache-dependency-path: sleepanarchy-website/package-lock.json
-      - run: cd sleepanarchy-website && npm ci
-      - run: cd sleepanarchy-website && npm run build
+      - run: cd sleepanarchy-website && npm ci && npx spago install && npm run build
