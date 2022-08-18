@@ -35,8 +35,10 @@ library
       Handlers.Admin
       Handlers.BlogPosts
       Handlers.Login
+      Handlers.Sitemap
       Lib
       Models.DB
+      Models.Utils
       Utils
   other-modules:
       Paths_sleepanarchy_api
@@ -59,8 +61,10 @@ library
       aeson
     , base >=4.7 && <5
     , bytestring
+    , containers
     , cookie
     , esqueleto
+    , http-media
     , jose
     , lens
     , monad-logger
@@ -76,6 +80,7 @@ library
     , servant-auth-server
     , servant-docs
     , servant-server
+    , sitemap-gen
     , text
     , time
     , wai-extra

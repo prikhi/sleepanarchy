@@ -15,7 +15,6 @@ Currently migrting from Python/Django/Mezzanine.
 * General
     * DB migration files & mgmt(e.g., soda)
         * Create index on blog_post.category_id
-    * Sitemap Generation
 * Blog Posts
     * Paginated list route?
     * Cache sidebar data - bust/regen on post create/edit

@@ -66,8 +66,10 @@ library:
     dependencies:
         - aeson
         - bytestring
+        - containers
         - cookie
         - esqueleto
+        - http-media
         - jose
         - lens
         - monad-logger
@@ -83,6 +85,7 @@ library:
         - servant-auth-server
         - servant-docs
         - servant-server
+        - sitemap-gen
         - text
         - time
         - wai-extra

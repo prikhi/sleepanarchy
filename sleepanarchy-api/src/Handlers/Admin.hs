@@ -5,21 +5,21 @@ import           Control.Monad.IO.Class         ( MonadIO(..) )
 import           Data.Aeson                     ( FromJSON(..)
                                                 , ToJSON(..)
                                                 )
-import           Data.Char                      ( isAlphaNum )
 import           Data.Maybe                     ( fromMaybe
                                                 , listToMaybe
                                                 )
 import           Data.Text                      ( Text )
 import           Data.Time                      ( getCurrentTime )
 import           Database.Persist.Sql           ( SqlPersistT
-                                                , insertUnique
                                                 , fromBackendKey
+                                                , insertUnique
                                                 )
 import           GHC.Generics                   ( Generic )
 import           Servant.Docs                   ( ToSample(..) )
 
 import           App                            ( DB(..) )
 import           Models.DB
+import           Models.Utils                   ( slugify )
 import           Utils                          ( prefixParseJSON
                                                 , prefixToJSON
                                                 )
@@ -88,17 +88,6 @@ createBlogPost uid NewBlogPost {..} = do
         result <- insertUnique newPost
         maybe (incrementSlugAndInsert newPost 1) return result
   where
-    slugify :: Text -> Text
-    slugify =
-        T.intercalate "-"
-            . filter (not . T.null)
-            . T.words
-            . T.toLower
-            . replaceInvalid
-    replaceInvalid :: Text -> Text
-    replaceInvalid =
-        T.map $ \c ->
-            if any ($ c) [isAlphaNum, (== '-'), (== '_')] then c else ' '
     mkDescription :: Text -> Text
     mkDescription content = fromMaybe content . listToMaybe $ T.lines content
     incrementSlugAndInsert :: BlogPost -> Integer -> SqlPersistT IO BlogPostId

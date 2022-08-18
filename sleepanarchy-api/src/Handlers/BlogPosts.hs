@@ -32,6 +32,7 @@ import           Utils                          ( prefixToJSON )
 import qualified Data.Text                     as T
 import qualified Database.Esqueleto.Experimental
                                                as E
+import           Models.Utils                   ( slugifyTag )
 
 
 -- SIDEBAR
@@ -262,25 +263,23 @@ getBlogPostsArchive year month =
 
 -- | Blog Posts with given slugified tag.
 getBlogPostsForTag :: DB m => Text -> m BlogPostList
-getBlogPostsForTag tag =
-    let cleanedTag = T.replace " " "-" $ T.toLower $ T.strip tag
-    in  runDB $ do
-            bplPosts <- map (uncurry mkPostData) <$> rawSql
-                [r|
-                    SELECT ??, ??
-                    FROM blog_post
-                    JOIN blog_category ON category_id=blog_category.id
-                    WHERE
-                        ? IN (
-                            SELECT ((REGEXP_REPLACE(LOWER(TRIM(FROM tag)),' ', '-')))
-                            FROM UNNEST(STRING_TO_ARRAY(tags, ',')) AS tag
-                        ) AND
-                        published_at IS NOT NULL
+getBlogPostsForTag (slugifyTag -> tag) = runDB $ do
+    bplPosts <- map (uncurry mkPostData) <$> rawSql
+        [r|
+            SELECT ??, ??
+            FROM blog_post
+            JOIN blog_category ON category_id=blog_category.id
+            WHERE
+                ? IN (
+                    SELECT ((REGEXP_REPLACE(LOWER(TRIM(FROM tag)),' ', '-')))
+                    FROM UNNEST(STRING_TO_ARRAY(tags, ',')) AS tag
+                ) AND
+                published_at IS NOT NULL
 
-                |]
-                [toPersistValue cleanedTag]
-            bplSidebar <- getBlogSidebarData
-            return BlogPostList { .. }
+        |]
+        [toPersistValue tag]
+    bplSidebar <- getBlogSidebarData
+    return BlogPostList { .. }
 
 -- | Blog Posts with given BlogCategory slug.
 getBlogPostsForCategory
