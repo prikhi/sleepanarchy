@@ -32,6 +32,7 @@
         "mini-css-extract-plugin": "^2.6.1",
         "purescript": "^0.15.4",
         "purs-tidy": "^0.9.1",
+        "robotstxt-webpack-plugin": "github:itgalaxy/robotstxt-webpack-plugin#fb4ab6eb168ea2de92d4b02d05497e829d6220dc",
         "sass": "^1.54.4",
         "sass-loader": "^13.0.2",
         "spago": "^0.20.9",

@@ -6,6 +6,7 @@ const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const ImageMinimizerWebpackPlugin = require("image-minimizer-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const RobotsTxtPlugin = require("robotstxt-webpack-plugin");
 const { SubresourceIntegrityPlugin } = require("webpack-subresource-integrity");
 const WebpackFavicons = require("webpack-favicons");
 
@@ -128,6 +129,18 @@ module.exports = (env, _) => {
                 filename: "[name].[contenthash].css",
                 chunkFilename: "[id].[contenthash].css",
             }),
+            new RobotsTxtPlugin({
+                policy: [
+                    {
+                        userAgent: "*",
+                        crawlDelay: 2,
+                        allow: "/",
+                        disallow: "/admin",
+                    },
+                ],
+                sitemap: "https://sleepanarchy.com/sitemap.xml",
+                host: "https://sleepanarchy.com",
+            }),
             new WebpackFavicons({
                 src: "src/favicon.svg",
                 appName: "Sleep Anarchy",
@@ -157,6 +170,10 @@ module.exports = (env, _) => {
                 "/api": {
                     target: "http://127.0.0.1:9001",
                     pathRewrite: { "^/api": "" },
+                },
+                "/sitemap.xml": {
+                    target: "http://127.0.0.1:9001/sitemap.xml",
+                    pathRewrite: { ".*": "" },
                 },
             },
         },
