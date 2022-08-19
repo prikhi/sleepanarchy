@@ -44,19 +44,19 @@ BlogPost
     -- TODO: ditch this for custom PostgresTextArray type?
     -- Lets us process once on save instead of every fetch
     tags Text
-    createdAt UTCTime
-    updatedAt UTCTime
-    publishedAt UTCTime Maybe
     authorId UserId OnDeleteCascade
     categoryId BlogCategoryId OnDeleteRestrict
+    createdAt UTCTime default=now()
+    updatedAt UTCTime default=now()
+    publishedAt UTCTime Maybe
     UniqueBlogPost slug
     deriving Show Read Eq Ord Generic
 
 BlogCategory
     title Text
     slug Text
-    createdAt UTCTime
-    updatedAt UTCTime
+    createdAt UTCTime default=now()
+    updatedAt UTCTime default=now()
     UniqueBlogCategory slug
     deriving Show Read Eq Ord Generic
 
