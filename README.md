@@ -6,15 +6,62 @@
 This repo contains the Haskell backend API server & Purescript client used to
 serve [sleepanarchy.com](https://sleepanarchy.com).
 
+It is currently in active develop & not live on the website -
+
+## Develop
+
+Create database:
+
+```sh
+createuser -DRS sleepanarchy-blog
+createdb sleepanarchy-blog -O sleepanarchy-blog
+````
+
+Install `sql-migrate` & migrate the database:
+
+```sh
+export PATH="${HOME}/.local/bin:${PATH}"
+GOBIN="${HOME}/.local/bin" go install -v github.com/rubenv/sql-migrate/...@v1.1.2
+cd sleepanarchy-api && sql-migrate up
+```
+
+Run the API server:
+
+```sh
+cd sleepanarchy-api
+stack run sleepanarchy-api
+```
+
+In another terminal, start the client & API proxy server:
+
+```sh
+cd sleepanarchy-website
+nvm use
+npm i
+npm run watch
+```
+
+The website should now be browseable at https://localhost:8080/. If you want to
+hit the API, you can make requests to https://localhost:8080/api/.
+
+The API serves it's own documentation as markdown. You can build & view it like
+so:
+
+```sh
+echo '<link href="https://gitcdn.link/cdn/develephant/mkdocs-codehilite-themes/master/css/monokai.css" rel="stylesheet" />' > docs.html
+curl localhost:9001/docs | markdown_py -x codehilite -x extra >> docs.html
+python -m http.server 8000 &
+firefox http://localhost:8000/docs.html
+```
+
+
 ## TODO
 
-Currently migrting from Python/Django/Mezzanine.
+Currently in the middle of migrating from Python/Django/Mezzanine(see tag
+`0.1.0-mezzanine-last`).
 
 ### SERVER
 
-* General
-    * DB migration files & mgmt(e.g., soda)
-        * Create index on blog_post.category_id
 * Blog Posts
     * Paginated list route?
     * Cache sidebar data - bust/regen on post create/edit
@@ -79,7 +126,7 @@ Currently migrting from Python/Django/Mezzanine.
     * browse media directory, create folders, upload & delete files
 
 
-## DEPLOY
+### DEPLOY
 
 * Dockerize server + prerender + nginx into containers?
 
