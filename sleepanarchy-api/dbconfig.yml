@@ -1,0 +1,13 @@
+---
+
+defaults: &defaults
+  dialect: postgres
+  datasource: dbname=sleepanarchy-blog user=sleepanarchy-blog sslmode=disable
+  dir: migrations
+  table: migrations
+
+production:
+  <<: *defaults
+
+development:
+  <<: *defaults
