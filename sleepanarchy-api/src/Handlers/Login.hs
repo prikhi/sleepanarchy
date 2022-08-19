@@ -23,15 +23,14 @@ import           Servant                        ( Header
                                                 )
 import           Servant.Auth.Server            ( SetCookie
                                                 , acceptLogin
-                                                , cookieXsrfSetting
-                                                , defaultCookieSettings
+                                                , clearSession
                                                 )
 import           Servant.Docs                   ( ToSample(..)
                                                 , singleSample
                                                 )
 
-import           App                            ( DB(..)
-                                                , JWTToken(..)
+import           App                            ( AuthToken(..)
+                                                , DB(..)
                                                 , ThrowsError(..)
                                                 )
 import           Models.DB
@@ -56,7 +55,7 @@ instance ToSample UserLogin where
     toSamples _ = singleSample $ UserLogin "myUserName" "hunter123"
 
 userLogin
-    :: (MonadIO m, DB m, JWTToken m, ThrowsError m)
+    :: (MonadIO m, DB m, AuthToken m, ThrowsError m)
     => UserLogin
     -> m
            ( Headers
@@ -74,12 +73,25 @@ userLogin UserLogin {..} = do
                     (PasswordHash @Argon2 $ userPassword user)
             case verificationResult of
                 PasswordCheckSuccess -> do
-                    jwtSettings   <- getJWTSettings
-                    mApplyCookies <- liftIO $ acceptLogin
-                        defaultCookieSettings { cookieXsrfSetting = Nothing }
-                        jwtSettings
-                        uid
+                    jwtSettings    <- getJWTSettings
+                    cookieSettings <- getCookieSettings
+                    mApplyCookies  <- liftIO
+                        $ acceptLogin cookieSettings jwtSettings uid
                     case mApplyCookies of
                         Nothing           -> serverError err401
                         Just applyCookies -> return $ applyCookies NoContent
                 PasswordCheckFail -> serverError err401
+
+
+userLogout
+    :: (AuthToken m, Monad m)
+    => m
+           ( Headers
+                 '[ Header "Set-Cookie" SetCookie
+                  , Header "Set-Cookie" SetCookie
+                  ]
+                 NoContent
+           )
+userLogout = do
+    cookieSettings <- getCookieSettings
+    return $ clearSession cookieSettings NoContent

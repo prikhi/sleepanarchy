@@ -32,7 +32,9 @@ import           Servant                        ( Application
                                                 , ServerError
                                                 , throwError
                                                 )
-import           Servant.Auth.Server            ( JWTSettings
+import           Servant.Auth.Server            ( CookieSettings(..)
+                                                , JWTSettings
+                                                , defaultCookieSettings
                                                 , defaultJWTSettings
                                                 , generateKey
                                                 )
@@ -58,6 +60,7 @@ data Environment
 data Config = Config
     { cfgDbPool            :: Pool SqlBackend
     , cfgJwk               :: JWK
+    , cfgCookieSettings    :: CookieSettings
     , cfgLoggingMiddleware :: Application -> Application
     }
 
@@ -93,6 +96,10 @@ mkConfig = do
                     "Could not parse `API_JWK` environmental variable - using ephemeral keys."
                 generateKey
             Just jwk -> return jwk
+    let cfgCookieSettings = defaultCookieSettings
+            { cookieXsrfSetting = Nothing
+            , cookieMaxAge      = Just $ 60 * 60 * 24 * 365
+            }
     return Config { .. }
   where
     dbConnectionString :: ConnectionString
@@ -135,9 +142,17 @@ class HasJwk a where
 instance HasJwk Config where
     getJwk = cfgJwk
 
+class HasCookieSettings a where
+    getCookieSettings_ :: a -> CookieSettings
 
-class JWTToken m where
+instance HasCookieSettings Config where
+    getCookieSettings_ = cfgCookieSettings
+
+
+class AuthToken m where
     getJWTSettings :: m JWTSettings
+    getCookieSettings :: m CookieSettings
 
-instance (HasJwk cfg, MonadReader cfg m) => JWTToken m where
-    getJWTSettings = asks (defaultJWTSettings . getJwk)
+instance (HasJwk cfg, HasCookieSettings cfg, MonadReader cfg m) => AuthToken m where
+    getJWTSettings    = asks (defaultJWTSettings . getJwk)
+    getCookieSettings = asks getCookieSettings_

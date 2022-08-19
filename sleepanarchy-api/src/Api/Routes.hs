@@ -42,7 +42,6 @@ import           Servant.Docs.Internal.Pretty   ( Pretty
                                                 )
 import           Servant.Server                 ( ServerT
                                                 , err403
-                                                , errBody
                                                 )
 import           Web.Cookie                     ( SetCookie
                                                 , defaultSetCookie
@@ -62,7 +61,6 @@ import           Handlers.Sitemap
 import           Models.DB
 import           Utils                          ( mkEndpointNotes )
 
-import qualified Data.ByteString.Lazy.Char8    as LBC
 import qualified Network.HTTP.Media            as Media
 
 
@@ -81,19 +79,27 @@ apiEndpointDocs = blogNotes <> loginNotes
 type LoginAPI
     = AddSetCookiesApi
           ( 'S ( 'S 'Z))
-          ("login" :> ReqBody '[JSON] UserLogin :> Post '[JSON] NoContent)
+          (     "login" :> ReqBody '[JSON] UserLogin :> Post '[JSON] NoContent
+           :<|> "logout" :> Post '[JSON] NoContent
+          )
 
 loginApi :: ServerT LoginAPI App
-loginApi = userLogin
+loginApi = userLogin :<|> userLogout
 
 loginNotes :: ExtraInfo (Pretty ServerAPI)
-loginNotes = mkEndpointNotes @LoginAPI @ServerAPI
-    ( "Throws"
-    , [ "* `401` is user does not exist"
-      , "* `401` if password is incorrect"
-      , "* `401` if server cannot generate cookies"
-      ]
-    )
+loginNotes =
+    mkEndpointNotes
+        @( AddSetCookiesApi
+              ( 'S ( 'S 'Z))
+              ("login" :> ReqBody '[JSON] UserLogin :> Post '[JSON] NoContent)
+        )
+        @ServerAPI
+        ( "Throws"
+        , [ "* `401` is user does not exist"
+          , "* `401` if password is incorrect"
+          , "* `401` if server cannot generate cookies"
+          ]
+        )
 
 
 -- SITEMAP
@@ -151,7 +157,7 @@ type AdminAPI
 adminApi :: AuthResult UserId -> ServerT AdminAPI App
 adminApi = \case
     Authenticated uid -> createBlogPost uid
-    e                 -> throwAll err403 { errBody = LBC.pack $ show e }
+    _                 -> throwAll err403
 
 
 
