@@ -6,7 +6,10 @@
 This repo contains the Haskell backend API server & Purescript client used to
 serve [sleepanarchy.com](https://sleepanarchy.com).
 
-It is currently in active develop & not live on the website -
+It is currently in active development & not live on the website - the current
+website is dead due to the deprecation of Python 2. To view the old Python /
+Django / Mezzanien site, see the `0.1.0-mezzanine-last` tag.
+
 
 ## Develop
 
@@ -57,11 +60,14 @@ firefox http://localhost:8000/docs.html
 
 ## TODO
 
-Currently in the middle of migrating from Python/Django/Mezzanine(see tag
-`0.1.0-mezzanine-last`).
+Currently in the middle of migrating from Python/Django/Mezzanine. Once this
+list has been trimmed down a bit, we'll actually migrate & deploy the site.
 
 ### SERVER
 
+* General
+    * Haskell `manage.hs` script for running server & client watchers in one
+      terminal(see SESE website repo).
 * Blog Posts
     * Paginated list route?
     * Cache sidebar data - bust/regen on post create/edit
