@@ -4,6 +4,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 module App where
 
+import           Control.Monad                  ( unless )
 import           Control.Monad.Except           ( MonadError )
 import           Control.Monad.Logger           ( NoLoggingT(runNoLoggingT)
                                                 , runStdoutLoggingT
@@ -22,8 +23,8 @@ import           Database.Persist.Postgresql    ( ConnectionString
                                                 )
 import           Database.Persist.Sql           ( SqlBackend
                                                 , SqlPersistT
-                                                , runMigration
                                                 , runSqlPool
+                                                , showMigration
                                                 )
 import           Network.Wai.Middleware.RequestLogger
                                                 ( logStdoutDev )
@@ -37,6 +38,7 @@ import           Servant.Auth.Server            ( JWTSettings
                                                 )
 import           Servant.Server                 ( Handler )
 import           System.Environment             ( lookupEnv )
+import           System.Exit                    ( exitFailure )
 import           System.IO                      ( hPutStrLn
                                                 , stderr
                                                 )
@@ -45,6 +47,7 @@ import           Text.Read                      ( readMaybe )
 import           Models.DB                      ( migrateAll )
 
 import qualified Data.ByteString.Lazy.Char8    as LBC
+import qualified Data.Text                     as T
 
 
 data Environment
@@ -69,7 +72,14 @@ mkConfig = do
             runStdoutLoggingT $ createPostgresqlPool dbConnectionString 2
         Production ->
             runNoLoggingT $ createPostgresqlPool dbConnectionString 20
-    runSqlPool (runMigration migrateAll) cfgDbPool
+    flip runSqlPool cfgDbPool $ do
+        migrationsDue <- showMigration migrateAll
+        unless (null migrationsDue) $ liftIO $ do
+            putStrLn "Cannot start server due to unmigrated database:"
+            mapM_ (putStrLn . ("\t" <>) . T.unpack) migrationsDue
+            putStrLn "Create a migration with `sql-migrate new`."
+            putStrLn "Run a migration with `sql-migrate up`, then try again."
+            exitFailure
     cfgJwk <- lookupEnv "API_JWK" >>= \case
         Nothing -> do
             hPutStrLn
