@@ -43,6 +43,7 @@ data Endpoint
   | BlogPostCategoryRequest String
   | BlogPostDetailsRequest String
   | AdminLogin { name :: String, password :: String }
+  | AdminLogout
 
 -- | Convert an API endpoint into it's URL, assuming a base path of `/api/`.
 endpointUrl :: Endpoint -> String
@@ -59,6 +60,8 @@ endpointUrl = (<>) "/api" <<< case _ of
     "/blog/post/" <> slug
   AdminLogin _ ->
     "/login"
+  AdminLogout ->
+    "/logout"
 
 endpointRequestBody :: Endpoint -> Maybe Json
 endpointRequestBody = case _ of
@@ -105,6 +108,7 @@ class Monad m <= ApiRequest m where
   blogPostCategoryRequest :: String -> m (Either ApiError BlogPostList)
   blogPostDetailsRequest :: String -> m (Either ApiError BlogPostDetails)
   adminLogin :: String -> String -> m (Either ApiError Unit)
+  adminLogout :: m (Either ApiError Unit)
 
 instance appApiRequest :: MonadAff m => ApiRequest m where
   preventFormSubmission (SubmitFormEvent e) = liftEffect $ E.preventDefault e
@@ -115,6 +119,7 @@ instance appApiRequest :: MonadAff m => ApiRequest m where
   blogPostDetailsRequest = getRequest <<< BlogPostDetailsRequest
   adminLogin name password = noContentPostRequest $ AdminLogin
     { name, password }
+  adminLogout = noContentPostRequest AdminLogout
 
 -- REQUEST HELPERS
 

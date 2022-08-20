@@ -2,6 +2,7 @@ module Pages.AdminDashboard (page) where
 
 import Prelude
 
+import Api (class ApiRequest, adminLogout)
 import App (class Auth, class Navigation, isLoggedIn, newUrl, setLoggedOut)
 import Data.Maybe (Maybe(..))
 import Halogen as H
@@ -10,7 +11,12 @@ import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Router (Route(..))
 
-page :: forall q i o m. Navigation m => Auth m => H.Component q i o m
+page
+  :: forall q i o m
+   . Navigation m
+  => Auth m
+  => ApiRequest m
+  => H.Component q i o m
 page =
   H.mkComponent
     { initialState
@@ -32,15 +38,17 @@ handleAction
   :: forall o m
    . Navigation m
   => Auth m
+  => ApiRequest m
   => Action
   -> H.HalogenM State Action () o m Unit
 handleAction = case _ of
   Initialize -> do
     isAuthed <- H.lift isLoggedIn
     H.modify_ $ const isAuthed
-  LogOut -> do
-    H.lift setLoggedOut
-    H.lift $ newUrl Home Nothing
+  LogOut -> H.lift $ do
+    setLoggedOut
+    void adminLogout
+    newUrl Home Nothing
 
 render :: forall m. State -> H.ComponentHTML Action () m
 render st =
