@@ -234,12 +234,16 @@ renderPostMeta navigateAction post = HH.div
 -- | Render a list of tags for a post.
 renderTagList
   :: forall w a. (Route -> ME.MouseEvent -> a) -> Array String -> HH.HTML w a
-renderTagList navigateAction tags =
-  HH.small [ HP.classes [ H.ClassName "blog-tag-list" ] ]
-    [ HH.text "Tags:"
-    , HH.ul_ $ map
-        ( \t -> HH.li_
-            [ HH.a (navLinkAttr navigateAction $ ViewBlogTag t) [ HH.text t ] ]
-        )
-        tags
-    ]
+renderTagList navigateAction tags
+  | null tags = HH.text ""
+  | otherwise =
+      HH.small [ HP.classes [ H.ClassName "blog-tag-list" ] ]
+        [ HH.text "Tags:"
+        , HH.ul_ $ map
+            ( \t -> HH.li_
+                [ HH.a (navLinkAttr navigateAction $ ViewBlogTag t)
+                    [ HH.text t ]
+                ]
+            )
+            tags
+        ]
