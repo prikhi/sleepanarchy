@@ -2,7 +2,7 @@ module Main (main) where
 
 import Prelude
 
-import App (AppEnv(..), mkMarkdownInstance, runAppM)
+import App (AppEnv(..), initializeAuthStatus, mkMarkdownInstance, runAppM)
 import BaseSite as BaseSite
 import Data.Either (fromRight)
 import Data.Maybe (Maybe)
@@ -23,7 +23,8 @@ main = do
   initialPath <- _.pathname <$> nav.locationState
   let initialRoute = fromRight NotFound $ match router initialPath
   md <- mkMarkdownInstance
-  let env = Env { nav, md }
+  authStatus <- initializeAuthStatus
+  let env = Env { nav, md, authStatus }
   HA.runHalogenAff do
     liftEffect $ info "Sleepanarchy.com Purescript Client Starting Up..."
     body <- HA.awaitBody

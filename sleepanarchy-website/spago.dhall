@@ -16,6 +16,7 @@ to generate this file without the comments in this block.
   , "affjax"
   , "affjax-web"
   , "argonaut"
+  , "argonaut-generic"
   , "arrays"
   , "bifunctors"
   , "console"
@@ -28,6 +29,7 @@ to generate this file without the comments in this block.
   , "foreign"
   , "halogen"
   , "html-parser-halogen"
+  , "http-methods"
   , "integers"
   , "lists"
   , "markdown-it"
@@ -40,6 +42,7 @@ to generate this file without the comments in this block.
   , "parsing"
   , "prelude"
   , "profunctor"
+  , "refs"
   , "routing"
   , "semirings"
   , "strings"
@@ -47,6 +50,8 @@ to generate this file without the comments in this block.
   , "tuples"
   , "validation"
   , "web-events"
+  , "web-html"
+  , "web-storage"
   , "web-uievents"
   ]
 , packages = ./packages.dhall

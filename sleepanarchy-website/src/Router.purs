@@ -3,12 +3,13 @@ module Router where
 import Prelude
 
 import Data.Date (Month, Year)
+import Data.Either (hush)
 import Data.Enum (class BoundedEnum, fromEnum, toEnum)
 import Data.Foldable (oneOf)
 import Data.Generic.Rep (class Generic)
 import Data.Int as Int
 import Data.List (List(..))
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Semiring.Free (free)
 import Data.Show.Generic (genericShow)
 import Data.String as String
@@ -16,7 +17,16 @@ import Data.Tuple (Tuple(..))
 import Data.Validation.Semiring (invalid)
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Routing.Match (Match(..), end, lit, root, str)
+import Routing (match)
+import Routing.Match
+  ( Match(..)
+  , end
+  , lit
+  , optionalMatch
+  , param
+  , root
+  , str
+  )
 import Routing.Match.Error (MatchError(..))
 import Routing.Types (RoutePart(..))
 import Web.UIEvent.MouseEvent as ME
@@ -28,6 +38,7 @@ data Route
   | ViewBlogArchive Year Month
   | ViewBlogTag String
   | ViewBlogCategory String
+  | Admin AdminRoute
   | NotFound
 
 derive instance genericRoute :: Generic Route _
@@ -44,11 +55,29 @@ reverse = case _ of
     show (fromEnum month)
   ViewBlogTag slug -> "/tag/" <> slugify slug
   ViewBlogCategory slug -> "/category/" <> slug
+  Admin adminRoute -> "/admin" <> reverseAdmin adminRoute
   NotFound -> "/"
   where
   slugify :: String -> String
   slugify = String.replaceAll (String.Pattern " ") (String.Replacement "-") >>>
     String.toLower
+
+-- | All possible admin pages we may render.
+data AdminRoute
+  = Login (Maybe String)
+  | Dashboard
+
+derive instance genericAdminRoute :: Generic AdminRoute _
+derive instance eqAdminRoute :: Eq AdminRoute
+instance showAdminRoute :: Show AdminRoute where
+  show = genericShow
+
+reverseAdmin :: AdminRoute -> String
+reverseAdmin = case _ of
+  Login mbRedirectTo -> "/login" <> case mbRedirectTo of
+    Nothing -> ""
+    Just redirectTo -> "?redirectTo=" <> redirectTo
+  Dashboard -> "/"
 
 -- | Generate the 'href' & 'onClick' attributes for a link to an internal page.
 navLinkAttr
@@ -60,6 +89,13 @@ navLinkAttr
 navLinkAttr handlerAction route =
   [ HP.href $ reverse route, HE.onClick $ handlerAction route ]
 
+-- | Parse the redirection path for the Login page's optional `redirectTo`
+-- | query parameter, defaulting to the Admin Dashboard route.
+parseRedirectPath :: Maybe String -> Route
+parseRedirectPath mbRedirectPath = fromMaybe (Admin Dashboard) $ mbRedirectPath
+  >>= match router
+    >>> hush
+
 -- | Parser from a location/path to a Route.
 router :: Match Route
 router =
@@ -69,8 +105,20 @@ router =
     , ViewBlogArchive <$> (lit "archive" *> enum) <*> enum <* end
     , ViewBlogTag <$> (lit "tag" *> str) <* end
     , ViewBlogCategory <$> (lit "category" *> str) <* end
+    , Admin <$> (lit "admin" *> adminRouter)
     , pure NotFound
     ]
+
+adminRouter :: Match AdminRoute
+adminRouter =
+  oneOf
+    [ Login <$> (lit "login" *> redirectParam <* end)
+    , Dashboard <$ end
+    ]
+  where
+  redirectParam :: Match (Maybe String)
+  redirectParam =
+    optionalMatch $ param "redirectTo"
 
 -- | TODO: make MR to upstream @purescript-routing@ package
 enum :: forall a. BoundedEnum a => Match a

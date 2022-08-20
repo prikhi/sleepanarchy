@@ -14,6 +14,14 @@ module App
   , mkMarkdownInstance
   , class GetTime
   , getToday
+  , class HasAuthStatus
+  , getAuthStatusRef
+  , class Auth
+  , isLoggedIn
+  , setLoggedIn
+  , setLoggedOut
+  , AuthStatus(..)
+  , initializeAuthStatus
   ) where
 
 import Prelude
@@ -25,15 +33,30 @@ import Control.Monad.Reader
   , asks
   , runReaderT
   )
+import Data.Argonaut
+  ( class DecodeJson
+  , class EncodeJson
+  , decodeJson
+  , encodeJson
+  , parseJson
+  , stringify
+  )
+import Data.Argonaut.Decode.Generic (genericDecodeJson)
+import Data.Argonaut.Encode.Generic (genericEncodeJson)
 import Data.Date (Date)
-import Data.Maybe (Maybe)
+import Data.Either (hush)
+import Data.Generic.Rep (class Generic)
+import Data.Maybe (Maybe, fromMaybe)
 import Data.Options ((:=))
+import Data.Show.Generic (genericShow)
 import Data.Traversable (for)
 import Effect (Effect)
 import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Now (nowDate)
+import Effect.Ref (Ref)
+import Effect.Ref as Ref
 import Effect.Unsafe (unsafePerformEffect)
 import Foreign (unsafeToForeign)
 import Highlight as Highlight
@@ -42,6 +65,9 @@ import MarkdownIt as Markdown
 import Router (Route, reverse)
 import Routing.PushState (PushStateInterface)
 import Web.Event.Event (preventDefault)
+import Web.HTML (window)
+import Web.HTML.Window (localStorage)
+import Web.Storage.Storage as Storage
 import Web.UIEvent.MouseEvent as ME
 
 -- APP MONAD
@@ -70,6 +96,7 @@ data AppEnv =
   Env
     { nav :: PushStateInterface
     , md :: MarkdownIt
+    , authStatus :: Ref AuthStatus
     }
 
 -- NAVIGATION
@@ -138,3 +165,63 @@ class Monad m <= GetTime m where
 
 instance monadEffectGetTime :: MonadEffect m => GetTime m where
   getToday = liftEffect nowDate
+
+-- AUTH
+
+data AuthStatus
+  = Anonymous
+  | Authorized
+
+derive instance genericAuthStatus :: Generic AuthStatus _
+derive instance eqAuthStatus :: Eq AuthStatus
+instance showAuthStatus :: Show AuthStatus where
+  show = genericShow
+
+instance encodeJsonAuthStatus :: EncodeJson AuthStatus where
+  encodeJson = genericEncodeJson
+
+instance decodeJsonAuthStatus :: DecodeJson AuthStatus where
+  decodeJson = genericDecodeJson
+
+authStatusLocalStorageKey :: String
+authStatusLocalStorageKey = "AUTHSTATUS"
+
+class HasAuthStatus a where
+  getAuthStatusRef :: a -> Ref AuthStatus
+
+instance hasAuthStatusAppEnv :: HasAuthStatus AppEnv where
+  getAuthStatusRef (Env e) = e.authStatus
+
+initializeAuthStatus :: forall m. MonadEffect m => m (Ref AuthStatus)
+initializeAuthStatus = liftEffect $ do
+  storage <- window >>= localStorage
+  mbRawVal <- Storage.getItem authStatusLocalStorageKey storage
+  let mbStatus = mbRawVal >>= (parseJson >>> hush) >>= (decodeJson >>> hush)
+  Ref.new $ fromMaybe Anonymous mbStatus
+
+class Monad m <= Auth m where
+  setLoggedIn :: m Unit
+  setLoggedOut :: m Unit
+  isLoggedIn :: m Boolean
+
+instance authHasAuthStatusEff ::
+  ( HasAuthStatus env
+  , MonadAsk env m
+  , MonadEffect m
+  ) =>
+  Auth m where
+  isLoggedIn = do
+    ref <- asks getAuthStatusRef
+    liftEffect $ ((==) Authorized) <$> Ref.read ref
+  setLoggedIn = do
+    asks getAuthStatusRef >>= Ref.write Authorized >>> liftEffect
+    storage <- liftEffect $ window >>= localStorage
+    liftEffect $ Storage.setItem authStatusLocalStorageKey
+      (stringify $ encodeJson Authorized)
+      storage
+  setLoggedOut = do
+    asks getAuthStatusRef >>= Ref.write Anonymous >>> liftEffect
+    storage <- liftEffect $ window >>= localStorage
+    liftEffect $ Storage.setItem authStatusLocalStorageKey
+      (stringify $ encodeJson Anonymous)
+      storage

@@ -3,7 +3,15 @@ module BaseSite (Query(..), component) where
 import Prelude
 
 import Api (class ApiRequest)
-import App (class GetTime, class Markdown, class Navigation, getToday, newUrl)
+import App
+  ( class Auth
+  , class GetTime
+  , class Markdown
+  , class Navigation
+  , getToday
+  , isLoggedIn
+  , newUrl
+  )
 import Data.Date (Date, canonicalDate, year)
 import Data.Enum (fromEnum)
 import Data.Maybe (Maybe(..))
@@ -11,12 +19,20 @@ import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import Pages.AdminDashboard as AdminDashboard
+import Pages.AdminLogin as AdminLogin
 import Pages.BlogPostArchive as BlogPostArchive
 import Pages.BlogPostCategory as BlogPostCategory
 import Pages.BlogPostList as BlogPostList
 import Pages.BlogPostTag as BlogPostTag
 import Pages.BlogPostView as BlogPostView
-import Router (Route(..), navLinkAttr)
+import Router
+  ( AdminRoute(..)
+  , Route(..)
+  , navLinkAttr
+  , parseRedirectPath
+  , reverse
+  )
 import Type.Proxy (Proxy(..))
 import Web.UIEvent.MouseEvent as ME
 
@@ -27,6 +43,7 @@ component
   :: forall o m
    . GetTime m
   => ApiRequest m
+  => Auth m
   => Navigation m
   => Markdown m
   => H.Component Query Route o m
@@ -57,6 +74,9 @@ type Slots =
   , viewBlogTagSlot :: forall query. H.Slot query Void BlogPostTag.Input
   , viewBlogCategorySlot ::
       forall query. H.Slot query Void BlogPostCategory.Input
+  -- TODO: shall we have a single slot for all Admin routes w/ an BaseAdmin component?
+  , viewAdminLoginSlot :: forall query. H.Slot query Void (Maybe String)
+  , viewAdminDashboardSlot :: forall query. H.Slot query Void Unit
   )
 
 _homePage :: Proxy "homePageSlot"
@@ -74,6 +94,12 @@ _viewBlogPostTag = Proxy
 _viewBlogPostCategory :: Proxy "viewBlogCategorySlot"
 _viewBlogPostCategory = Proxy
 
+_viewAdminLogin :: Proxy "viewAdminLoginSlot"
+_viewAdminLogin = Proxy
+
+_viewAdminDashboard :: Proxy "viewAdminDashboardSlot"
+_viewAdminDashboard = Proxy
+
 -- | The base app only cares about the current page & date, all other state is
 -- | stored within the various `Page.*` module componets.
 type State = { currentPage :: Route, currentDate :: Date }
@@ -85,10 +111,32 @@ initial route =
   }
 
 handleQuery
-  :: forall o m a. Query a -> H.HalogenM State Action Slots o m (Maybe a)
+  :: forall o m a
+   . Auth m
+  => Navigation m
+  => Query a
+  -> H.HalogenM State Action Slots o m (Maybe a)
 handleQuery = case _ of
   UpdateRoute newRoute next -> do
-    H.modify_ (_ { currentPage = newRoute })
+    isAuthed <- H.lift isLoggedIn
+    let setPageToNewRoute = H.modify_ (_ { currentPage = newRoute })
+    case newRoute of
+      Admin (Login mbRedirectPath) ->
+        if isAuthed then
+          H.lift $ newUrl (parseRedirectPath mbRedirectPath) Nothing
+        else
+          setPageToNewRoute
+      Admin adminRoute ->
+        if not isAuthed then do
+          let
+            mbRedirectTo =
+              if adminRoute == Dashboard then Nothing
+              else Just $ reverse newRoute
+          H.lift $ newUrl (Admin $ Login mbRedirectTo) Nothing
+        else
+          setPageToNewRoute
+      _ ->
+        setPageToNewRoute
     pure $ Just next
 
 handleAction
@@ -109,17 +157,22 @@ render
   :: forall m
    . ApiRequest m
   => Navigation m
+  => Auth m
   => Markdown m
   => State
   -> H.ComponentHTML Action Slots m
 render { currentPage, currentDate } =
-  HH.div [ HP.id "root" ]
-    [ renderHeader currentPage
-    , HH.div [ HP.id "main" ]
-        [ renderPage currentPage
+  case currentPage of
+    Admin adminRoute ->
+      renderAdmin adminRoute
+    _ ->
+      HH.div [ HP.id "root" ]
+        [ renderHeader currentPage
+        , HH.div [ HP.id "main" ]
+            [ renderPage currentPage
+            ]
+        , renderFooter currentDate
         ]
-    , renderFooter currentDate
-    ]
 
 renderHeader :: forall s m. Route -> H.ComponentHTML Action s m
 renderHeader currentPage =
@@ -202,3 +255,16 @@ renderPage = pageWrapper <<< case _ of
   pageWrapper :: forall w i. HH.HTML w i -> HH.HTML w i
   pageWrapper content = HH.div [ HP.class_ $ H.ClassName "main" ]
     [ content ]
+
+renderAdmin
+  :: forall a m
+   . ApiRequest m
+  => Navigation m
+  => Auth m
+  => AdminRoute
+  -> H.ComponentHTML a Slots m
+renderAdmin = case _ of
+  Login mbRedirect ->
+    HH.slot_ _viewAdminLogin mbRedirect AdminLogin.page mbRedirect
+  Dashboard ->
+    HH.slot_ _viewAdminDashboard unit AdminDashboard.page unit
