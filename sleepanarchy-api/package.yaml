@@ -135,7 +135,17 @@ tests:
             - -with-rtsopts "-N -T"
         dependencies:
             - sleepanarchy-api
+            - aeson
             - hedgehog
+            - monad-logger
+            - mtl
+            - persistent
+            - persistent-postgresql
+            - resource-pool
+            - safe-exceptions
+            - servant-server
             - tasty
             - tasty-hedgehog
             - tasty-hunit
+            - time
+            - text

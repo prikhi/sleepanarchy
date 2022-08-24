@@ -121,8 +121,12 @@ class HasDbPool a where
 instance HasDbPool Config where
     getDbPool = cfgDbPool
 
+instance HasDbPool (Pool SqlBackend) where
+    getDbPool = id
+
 
 class DB m where
+    -- | Run a series of queries in a transaction. May throw an SqlError.
     runDB :: SqlPersistT IO a -> m a
 
 instance (HasDbPool cfg, MonadReader cfg m, MonadIO m) => DB m where

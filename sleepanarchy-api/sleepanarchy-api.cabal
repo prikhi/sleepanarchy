@@ -147,6 +147,7 @@ test-suite sleepanarchy-api-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Test.Setup
       Paths_sleepanarchy_api
   hs-source-dirs:
       tests
@@ -164,10 +165,20 @@ test-suite sleepanarchy-api-test
       ViewPatterns
   ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -O2 -threaded -rtsopts -with-rtsopts "-N -T"
   build-depends:
-      base >=4.7 && <5
+      aeson
+    , base >=4.7 && <5
     , hedgehog
+    , monad-logger
+    , mtl
+    , persistent
+    , persistent-postgresql
+    , resource-pool
+    , safe-exceptions
+    , servant-server
     , sleepanarchy-api
     , tasty
     , tasty-hedgehog
     , tasty-hunit
+    , text
+    , time
   default-language: Haskell2010

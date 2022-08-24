@@ -121,28 +121,54 @@ getBlogSidebarData = do
     bsdRecent <- map mkRecent <$> selectList
         [BlogPostPublishedAt !=. Nothing]
         [Desc BlogPostPublishedAt, LimitTo 5]
+    bsdArchive    <- getBlogSidebarArchive
+    bsdTags       <- getBlogSidebarTags
+    bsdCategories <- getBlogSidebarCategories
+    return BlogSidebarData { .. }
+
+getBlogSidebarArchive :: MonadIO m => SqlPersistT m [BlogArchiveYearData]
+getBlogSidebarArchive = do
     let archiveQuery = [r|
             SELECT
                 DATE_PART('year', published_at) AS year,
                 DATE_PART('month', published_at) AS month,
                 COUNT(*)
             FROM blog_post
+            WHERE published_at IS NOT NULL
             GROUP BY year, month
+            ORDER BY year DESC, month DESC
             |]
-        mkArchive (Single y, Single m, Single c) = BlogArchiveYearData y m c
-    bsdArchive <- map mkArchive <$> rawSql archiveQuery []
+    map mkArchive <$> rawSql archiveQuery []
+  where
+    mkArchive :: (Single Int, Single Int, Single Int) -> BlogArchiveYearData
+    mkArchive (Single y, Single m, Single c) = BlogArchiveYearData y m c
+
+getBlogSidebarTags :: MonadIO m => SqlPersistT m [BlogTagData]
+getBlogSidebarTags = do
     let tagQuery = [r|
-            SELECT
-                TRIM(FROM UNNEST(STRING_TO_ARRAY(tags, ','))) AS tag,
-                COUNT(*)
-            FROM blog_post
-            GROUP BY tag
-            ORDER BY tag ASC
+            SELECT *
+            FROM (
+                SELECT
+                    TRIM(FROM UNNEST(STRING_TO_ARRAY(tags, ','))) AS tag,
+                    COUNT(*)
+                FROM blog_post
+                WHERE published_at IS NOT NULL
+                GROUP BY tag
+                ORDER BY tag ASC
+            ) AS sq
+            WHERE tag <> ''
             |]
-        mkTag (Single t, Single c) = BlogTagData t c
-    bsdTags <- map mkTag <$> rawSql tagQuery []
-    let categoryQuery = E.select $ do
-            (_ E.:& category) <-
+    map mkTag <$> rawSql tagQuery []
+  where
+    mkTag :: (Single Text, Single Int) -> BlogTagData
+    mkTag (Single t, Single c) = BlogTagData t c
+
+getBlogSidebarCategories
+    :: MonadIO m => SqlPersistT m [BlogSidebarCategoryData]
+getBlogSidebarCategories = do
+    let
+        categoryQuery = E.select $ do
+            (post E.:& category) <-
                 E.from
                 $             E.table @BlogPost
                 `E.InnerJoin` E.table @BlogCategory
@@ -156,15 +182,18 @@ getBlogSidebarData = do
                 )
             E.orderBy [E.asc $ category E.^. BlogCategoryTitle]
             E.having $ E.countRows @Int E.>. E.val 0
+            E.where_ $ E.not_ (E.isNothing $ post E.^. BlogPostPublishedAt)
             return
                 ( category E.^. BlogCategoryTitle
                 , category E.^. BlogCategorySlug
                 , E.countRows
                 )
-        mkCategory (E.Value t, E.Value s, E.Value c) =
-            BlogSidebarCategoryData t s c
-    bsdCategories <- map mkCategory <$> categoryQuery
-    return BlogSidebarData { .. }
+    map mkCategory <$> categoryQuery
+  where
+    mkCategory
+        :: (E.Value Text, E.Value Text, E.Value Int) -> BlogSidebarCategoryData
+    mkCategory (E.Value t, E.Value s, E.Value c) =
+        BlogSidebarCategoryData t s c
 
 
 -- CATEGORY

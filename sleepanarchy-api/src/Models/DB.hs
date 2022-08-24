@@ -13,7 +13,8 @@ module Models.DB where
 import           Data.Text                      ( Text )
 import           Data.Time                      ( UTCTime )
 import           Database.Persist               ( ToBackendKey(..) )
-import           Database.Persist.TH            ( mkMigrate
+import           Database.Persist.TH            ( mkEntityDefList
+                                                , mkMigrate
                                                 , mkPersist
                                                 , persistLowerCase
                                                 , share
@@ -28,7 +29,7 @@ import           Servant.Docs                   ( ToSample(..)
                                                 )
 
 
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
+share [mkPersist sqlSettings, mkEntityDefList "tableDefs", mkMigrate "migrateAll"] [persistLowerCase|
 
 User
     name Text
