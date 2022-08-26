@@ -38,11 +38,13 @@ import           Database.Persist.Sql           ( EntityDef
                                                 , runSqlPool
                                                 )
 import           Servant                        ( ServerError )
+import           System.Environment             ( lookupEnv )
 
 import           Models.DB                      ( migrateAll
                                                 , tableDefs
                                                 )
 
+import qualified Data.ByteString.Char8         as BC
 import qualified Data.List                     as L
 
 
@@ -59,16 +61,20 @@ newtype TestM a
 -- TestM action.
 testRunner :: TestM a -> IO (Either ServerError a)
 testRunner action = do
-    pool <- runNoLoggingT $ createPostgresqlPool
-        "host=localhost user=sleepanarchy-blog dbname=sleepanarchy-blog-test"
+    dbPassword <- maybe "" ((" password=" <>) . BC.pack) <$> lookupEnv "DB_PASS"
+    pool       <- runNoLoggingT $ createPostgresqlPool
+        (  "host=localhost user=sleepanarchy-blog dbname=sleepanarchy-blog-test"
+        <> dbPassword
+        )
         1
     void $ runSqlPool (dropAllTables >> runMigrationQuiet migrateAll) pool
     runExceptT $ runReaderT (runTestM action) pool
 
 -- | Helper function to clear out all Persistent tables from a database.
 dropAllTables :: MonadIO m => SqlPersistT m ()
-dropAllTables = forM_ tableDropOrder $ \tableName ->
-    rawExecute ("DROP TABLE \"" <> unEntityNameDB tableName <> "\";") []
+dropAllTables = forM_ tableDropOrder $ \tableName -> rawExecute
+    ("DROP TABLE IF EXISTS \"" <> unEntityNameDB tableName <> "\";")
+    []
   where
     -- Ordered list of table names to drop. Front of list has tables w/
     -- fields that point to other tables & thus need to be dropped first.

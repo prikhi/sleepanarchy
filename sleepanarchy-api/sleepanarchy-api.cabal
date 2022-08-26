@@ -167,6 +167,7 @@ test-suite sleepanarchy-api-test
   build-depends:
       aeson
     , base >=4.7 && <5
+    , bytestring
     , hedgehog
     , monad-logger
     , mtl

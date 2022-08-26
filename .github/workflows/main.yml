@@ -19,6 +19,20 @@ jobs:
   build-stack:
     name: Stack
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_DB: sleepanarchy-blog-test
+          POSTGRES_USER: sleepanarchy-blog
+          POSTGRES_PASSWORD: hunter2
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v3
       - name: Cache Stack Artifacts
@@ -37,11 +51,27 @@ jobs:
           enable-stack: true
           stack-no-global: true
       - run: cd sleepanarchy-api && stack test --fast --haddock --pedantic --resolver lts-18
+        env:
+          DB_PASS: hunter2
 
   # Stackage Nightly - Failures Allowed
   build-nightly:
     name: Stackage Nightly
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_DB: sleepanarchy-blog-test
+          POSTGRES_USER: sleepanarchy-blog
+          POSTGRES_PASSWORD: hunter2
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v3
       - name: Get Current Date
@@ -65,12 +95,28 @@ jobs:
           enable-stack: true
           stack-no-global: true
       - run: cd sleepanarchy-api && stack test --fast --haddock --pedantic --resolver nightly
+        env:
+          DB_PASS: hunter2
         continue-on-error: true
 
   # Cabal Builds w/ Current & Next GHC
   build-cabal:
     name: GHC / Cabal
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_DB: sleepanarchy-blog-test
+          POSTGRES_USER: sleepanarchy-blog
+          POSTGRES_PASSWORD: hunter2
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     strategy:
       matrix:
         ghc: ['9.0', '9.2']
@@ -95,6 +141,8 @@ jobs:
           enable-stack: true
       - run: cabal update
       - run: cd sleepanarchy-api && cabal new-test --enable-tests && cabal new-haddock
+        env:
+          DB_PASS: hunter2
 
   # Build the Frontend
   build-purescript:
@@ -118,4 +166,5 @@ jobs:
           node-version-file: sleepanarchy-website/.nvmrc
           cache: npm
           cache-dependency-path: sleepanarchy-website/package-lock.json
-      - run: cd sleepanarchy-website && npm ci && npx spago install && npm run build
+      # Dev builds until we can fix SRI plugin on GitHub(prod builds work fine locally)
+      - run: cd sleepanarchy-website && npm ci && npx spago install && npm run build -- --mode development
