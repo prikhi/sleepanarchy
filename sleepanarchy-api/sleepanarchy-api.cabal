@@ -74,6 +74,7 @@ library
     , persistent-postgresql
     , raw-strings-qq
     , resource-pool
+    , safe-exceptions
     , servant
     , servant-auth
     , servant-auth-docs

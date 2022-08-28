@@ -4,7 +4,13 @@
 {-# LANGUAGE UndecidableInstances #-}
 module App where
 
-import           Control.Monad                  ( unless )
+import           Control.Exception.Safe         ( MonadCatch
+                                                , MonadThrow
+                                                , try
+                                                )
+import           Control.Monad                  ( (>=>)
+                                                , unless
+                                                )
 import           Control.Monad.Except           ( MonadError )
 import           Control.Monad.Logger           ( NoLoggingT(runNoLoggingT)
                                                 , runStdoutLoggingT
@@ -111,7 +117,7 @@ mkConfig = do
 newtype App a =
     App
         { runApp :: ReaderT Config Handler a
-        } deriving (Functor, Applicative, Monad, MonadReader Config, MonadIO, MonadError ServerError)
+        } deriving (Functor, Applicative, Monad, MonadReader Config, MonadIO, MonadError ServerError, MonadThrow, MonadCatch)
 
 
 
@@ -129,8 +135,18 @@ class DB m where
     -- | Run a series of queries in a transaction. May throw an SqlError.
     runDB :: SqlPersistT IO a -> m a
 
+class DBThrows m where
+    -- | Run a series of queries in a transaction. Thrown 'ServerError's
+    -- are caught & re-thrown in @m@.
+    runDBThrow :: SqlPersistT IO a -> m a
+
 instance (HasDbPool cfg, MonadReader cfg m, MonadIO m) => DB m where
     runDB query = asks getDbPool >>= liftIO . runSqlPool query
+
+instance (DB m, MonadCatch m, ThrowsError m) => DBThrows m where
+    runDBThrow = try . runDB >=> \case
+        Right r -> return r
+        Left  e -> serverError e
 
 
 class ThrowsError m where

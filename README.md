@@ -57,6 +57,14 @@ python -m http.server 8000 &
 firefox http://localhost:8000/docs.html
 ```
 
+The API server has handler tests you can run:
+
+```sh
+cd sleepanarchy-api
+createdb sleepanarchy-blog-test -O sleepanarchy-blog
+stack test --fast
+```
+
 
 ## TODO
 
@@ -68,6 +76,7 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
 * General
     * Haskell `manage.hs` script for running server & client watchers in one
       terminal(see SESE website repo).
+    * Migration script from old django DB to new DB
 * Blog Posts
     * Paginated list route?
     * Cache sidebar data - bust/regen on post create/edit
@@ -78,10 +87,8 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
           keep the size reasonable for now _but_ we could just use pandoc to
           render the markdown w/ pygments & only include the style css.
     * RSS / ATOM feeds?
-    * Admin: Get/Update post routes
-        * Re-evaluate description auto-generation(take first paragraph & render
-          markdown?)
-    * Admin: Publish post route?
+    * Re-evaluate description auto-generation(render as markdown & then take
+      first paragraph? Never auto-gen?)
 * Link Dump
     * DB Model
     * Fetch Route
@@ -121,6 +128,7 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
           Success or Error? This message should clear the "previous page" so
           that the current page is rendered.
 * Blog Posts
+    * Markdown rendering for post descriptions in list views
     * published date formatting(X days ago)
     * Add feeds to sidebar? Or footer? Or both?
     * 404 page

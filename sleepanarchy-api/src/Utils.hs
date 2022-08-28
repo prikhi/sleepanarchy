@@ -5,7 +5,8 @@
 module Utils where
 
 import           Control.Lens                   ( (<>~) )
-import           Data.Aeson                     ( defaultOptions
+import           Data.Aeson                     ( Options
+                                                , defaultOptions
                                                 , fieldLabelModifier
                                                 , genericParseJSON
                                                 , genericToJSON
@@ -38,7 +39,15 @@ import           Servant.Docs.Internal.Pretty   ( Pretty
 -- of fields & converting to camelCase.
 prefixToJSON
     :: (Generic a, GToJSON' Value Zero (Rep a)) => String -> a -> Value
-prefixToJSON pfx = genericToJSON defaultOptions
+prefixToJSON pfx = prefixToJSONWith pfx id
+
+prefixToJSONWith
+    :: (Generic a, GToJSON' Value Zero (Rep a))
+    => String
+    -> (Options -> Options)
+    -> a
+    -> Value
+prefixToJSONWith pfx optFunc = genericToJSON $ optFunc defaultOptions
     { fieldLabelModifier = dropJSONFieldPrefix pfx
     }
 

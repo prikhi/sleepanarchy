@@ -11,6 +11,7 @@ import           Control.Monad                  ( forM_
 import           Control.Monad.Except           ( ExceptT
                                                 , MonadError
                                                 , runExceptT
+                                                , throwError
                                                 )
 import           Control.Monad.IO.Class         ( MonadIO )
 import           Control.Monad.Logger           ( runNoLoggingT )
@@ -40,6 +41,7 @@ import           Database.Persist.Sql           ( EntityDef
 import           Servant                        ( ServerError )
 import           System.Environment             ( lookupEnv )
 
+import           App                            ( ThrowsError(..) )
 import           Models.DB                      ( migrateAll
                                                 , tableDefs
                                                 )
@@ -53,6 +55,9 @@ newtype TestM a
     = TestM
         { runTestM :: ReaderT (Pool SqlBackend) (ExceptT ServerError IO) a
         } deriving (Functor, Applicative, Monad, MonadIO, MonadReader (Pool SqlBackend), MonadError ServerError, MonadThrow, MonadCatch)
+
+instance ThrowsError TestM where
+    serverError = throwError
 
 -- | Evaluate a test action into IO.
 --

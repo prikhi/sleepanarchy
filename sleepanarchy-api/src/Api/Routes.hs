@@ -21,6 +21,7 @@ import           Servant.API                    ( (:<|>)(..)
                                                 , ReqBody
                                                 )
 import           Servant.API.ContentTypes       ( eitherDecodeLenient )
+import           Servant.Auth.Docs              ( )
 import           Servant.Auth.Server            ( Auth
                                                 , AuthResult(Authenticated)
                                                 , Cookie
@@ -64,14 +65,17 @@ import           Utils                          ( mkEndpointNotes )
 import qualified Network.HTTP.Media            as Media
 
 
-type ServerAPI
-    = BlogAPI :<|> LoginAPI :<|> SitemapAPI :<|> Auth '[Cookie, JWT] UserId :> AdminAPI
+type ServerAPI =
+         BlogAPI
+    :<|> LoginAPI
+    :<|> SitemapAPI
+    :<|> Auth '[Cookie, JWT] UserId :> AdminAPI
 
 api :: ServerT ServerAPI App
 api = blogApi :<|> loginApi :<|> sitemapApi :<|> adminApi
 
 apiEndpointDocs :: ExtraInfo (Pretty ServerAPI)
-apiEndpointDocs = blogNotes <> loginNotes
+apiEndpointDocs = blogNotes <> loginNotes <> adminNotes
 
 
 -- LOGIN
@@ -151,20 +155,37 @@ blogApi =
 
 -- ADMIN
 
-type AdminAPI
-    = "admin" :> "blog" :> "post" :> ReqBody '[JSON] NewBlogPost :> Post '[JSON] BlogPostId
+type AdminAPI =
+         "admin" :> "blog" :> "post" :> ReqBody '[JSON] NewBlogPost :> Post '[JSON] BlogPostId
+    :<|> "admin" :> "blog" :> "posts" :> Get '[JSON] AdminBlogPostList
+    :<|> "admin" :> "blog" :> "post" :> Capture "blogPostId" BlogPostId :> Get '[JSON] AdminBlogPost
+    :<|> "admin" :> "blog" :> "post" :> Capture "blogPostId" BlogPostId :> ReqBody '[JSON] AdminBlogPostUpdate :> Post '[JSON] NoContent
 
 adminApi :: AuthResult UserId -> ServerT AdminAPI App
 adminApi = \case
-    Authenticated uid -> createBlogPost uid
-    _                 -> throwAll err403
+    Authenticated uid ->
+        createBlogPost uid
+            :<|> getBlogPostsAdmin uid
+            :<|> getBlogPostAdmin uid
+            :<|> updateBlogPost uid
+    _ -> throwAll err403
 
+adminNotes :: ExtraInfo (Pretty ServerAPI)
+adminNotes =
+    mkEndpointNotes
+        @( Auth '[Cookie, JWT] UserId :> "admin" :> "blog" :> "post" :> Capture "blogPostId" BlogPostId :> Get '[JSON] AdminBlogPost
+        )
+        @ServerAPI
+        ("Throws", ["* `404` if there is no matching post with the given ID."])
 
 
 -- ORPHANS
 
 instance ToCapture (Capture "postSlug" Text) where
     toCapture _ = DocCapture "postSlug" "slug field of a BlogPost"
+
+instance ToCapture (Capture "blogPostId" BlogPostId) where
+    toCapture _ = DocCapture "blogPostId" "ID of a BlogPost"
 
 instance ToCapture (Capture "tagSlug" Text) where
     toCapture _ = DocCapture

@@ -9,8 +9,12 @@ import           Data.Aeson                     ( FromJSON(..)
                                                 , eitherDecode
                                                 , encode
                                                 )
+import           Data.Bifunctor                 ( Bifunctor(..) )
 import           Data.Either                    ( fromRight
                                                 , isRight
+                                                )
+import           Data.Maybe                     ( fromJust
+                                                , isJust
                                                 )
 import           Data.Text                      ( Text )
 import           Data.Time                      ( UTCTime(UTCTime)
@@ -18,6 +22,7 @@ import           Data.Time                      ( UTCTime(UTCTime)
                                                 , getCurrentTime
                                                 )
 import           GHC.Generics                   ( Generic )
+import           Servant                        ( ServerError(..) )
 import           System.Environment             ( setEnv )
 import           System.Exit                    ( ExitCode(..) )
 
@@ -27,6 +32,7 @@ import           Test.Tasty.HUnit
 import           Test.Tasty.Hedgehog
 
 import           App
+import           Handlers.Admin
 import           Handlers.BlogPosts
 import           Models.DB
 import           Models.Utils                   ( slugify )
@@ -99,7 +105,151 @@ genPrefixJSONHelper =
 -- errors caused by multiple parallel tests making conflicting changes to
 -- the database.
 dbTests :: TestTree
-dbTests = testGroup "DB Tests" [blogSidebarTests]
+dbTests = testGroup "DB Tests" [blogSidebarTests, adminTests]
+
+adminTests :: TestTree
+adminTests = testGroup "Admin" [adminBlogTests]
+
+adminBlogTests :: TestTree
+adminBlogTests = testGroup
+    "Blog"
+    [getBlogPostsAdminTests, getBlogPostAdminTests, updateBlogPostTests]
+
+getBlogPostsAdminTests :: TestTree
+getBlogPostsAdminTests = testGroup
+    "getBlogPostsAdmin"
+    [ testCase "Returns Published & Unpublished Posts" $ do
+          result <- testRunner $ do
+              uid <- runDB $ do
+                  uid <- P.entityKey <$> makeUser
+                  cid <- P.entityKey <$> makeBlogCategory "category"
+                  void $ makeBlogPost "p1" "" uid cid Nothing
+                  void $ makeBlogPost "p2" "" uid cid $ Just $ UTCTime
+                      (fromGregorian 2020 04 20)
+                      0
+                  return uid
+              getBlogPostsAdmin uid
+          length . abplPosts <$> result @?= Right 2
+    ]
+
+getBlogPostAdminTests :: TestTree
+getBlogPostAdminTests = testGroup
+    "getBlogPostAdmin"
+    [ testCase "Throws a 404 when post does not exist" $ do
+        result <- testRunner $ do
+            uid <- runDB $ P.entityKey <$> makeUser
+            let invalidPostId = P.fromBackendKey 9001
+            getBlogPostAdmin uid invalidPostId
+        first errHTTPCode result @?= Left 404
+    , testCase "Succeeds for valid post IDs" $ do
+        result <- testRunner $ do
+            (uid, pid) <- runDB $ do
+                uid <- P.entityKey <$> makeUser
+                cid <- P.entityKey <$> makeBlogCategory "category"
+                (uid, )
+                    .   P.entityKey
+                    <$> makeBlogPost "title" "" uid cid Nothing
+            getBlogPostAdmin uid pid
+        result `satisfies` isRight
+    ]
+
+updateBlogPostTests :: TestTree
+updateBlogPostTests = testGroup
+    "updateBlogPost"
+    [ testCase "Throws a 404 when post does not exist" $ do
+        result <- testRunner $ do
+            uid <- runDB $ P.entityKey <$> makeUser
+            let invalidPostId = P.fromBackendKey 9001
+            updateBlogPost uid invalidPostId emptyUpdate
+        first errHTTPCode result @?= Left 404
+    , testCase "Does nothing when passed an empty update" $ do
+        result <- testRunner $ do
+            (uid, pid, post) <- runDB $ do
+                uid <- P.entityKey <$> makeUser
+                cid <- P.entityKey <$> makeBlogCategory "category"
+                pid <- P.entityKey <$> makeBlogPost "title" "" uid cid Nothing
+                (uid, pid, ) . fromJust <$> P.get pid
+            void $ updateBlogPost uid pid emptyUpdate
+            (post, ) . fromJust <$> runDB (P.get pid)
+        result `satisfies` isRight
+        let (initial, afterUpdate) = fromRight (error "checked") result
+        afterUpdate @?= initial
+    , testCase "Sets the UpdatedAt field if an update occurs" $ do
+        result <- testRunner $ do
+            (uid, pid, post) <- runDB $ do
+                uid <- P.entityKey <$> makeUser
+                cid <- P.entityKey <$> makeBlogCategory "category"
+                pid <- P.entityKey <$> makeBlogPost "title" "" uid cid Nothing
+                (uid, pid, ) . fromJust <$> P.get pid
+            void $ updateBlogPost
+                uid
+                pid
+                emptyUpdate { abpuContent = Just "something" }
+            (blogPostUpdatedAt post, ) . blogPostUpdatedAt . fromJust <$> runDB
+                (P.get pid)
+        result `satisfies` isRight
+        let (initial, afterUpdate) = fromRight (error "checked") result
+        afterUpdate @?/= initial
+    , testCase "Autogenerates a slug if left blank" $ do
+        result <- testRunner $ insertAndUpdatePost emptyUpdate
+            { abpuTitle = Just "new title"
+            , abpuSlug  = Just ""
+            }
+        fmap blogPostSlug <$> result @?= Right (Just "new-title")
+    , testCase "Publishes the post if told to" $ do
+        result <- testRunner
+            $ insertAndUpdatePost emptyUpdate { abpuPublished = Just True }
+        ((>>= blogPostPublishedAt) <$> result)
+            `satisfies` either (const False) isJust
+    , testCase "Does not update publish or updated times if already published"
+        $ do
+              result <- testRunner $ do
+                  now              <- liftIO getCurrentTime
+                  (uid, pid, post) <- runDB $ do
+                      uid <- P.entityKey <$> makeUser
+                      cid <- P.entityKey <$> makeBlogCategory "category"
+                      p   <- mkBlogPost "title" uid cid
+                      pid <- P.insert p { blogPostPublishedAt = Just now }
+                      (uid, pid, ) . fromJust <$> P.get pid
+                  void $ updateBlogPost
+                      uid
+                      pid
+                      emptyUpdate { abpuPublished = Just True }
+                  (post, ) . fromJust <$> runDB (P.get pid)
+              result `satisfies` isRight
+              let (initial, afterUpdate) = fromRight (error "checked") result
+              blogPostPublishedAt afterUpdate `satisfies` isJust
+              blogPostPublishedAt afterUpdate @?= blogPostPublishedAt initial
+              blogPostUpdatedAt afterUpdate @?= blogPostUpdatedAt initial
+    , testCase "Can unpublish a Post" $ do
+        result <- testRunner $ do
+            now        <- liftIO getCurrentTime
+            (uid, pid) <- runDB $ do
+                uid <- P.entityKey <$> makeUser
+                cid <- P.entityKey <$> makeBlogCategory "category"
+                (uid, ) . P.entityKey <$> makeBlogPost "title"
+                                                       ""
+                                                       uid
+                                                       cid
+                                                       (Just now)
+            void $ updateBlogPost uid
+                                  pid
+                                  emptyUpdate { abpuPublished = Just False }
+            runDB $ P.get pid
+        fmap blogPostPublishedAt <$> result @?= Right (Just Nothing)
+    ]
+  where
+    emptyUpdate :: AdminBlogPostUpdate
+    emptyUpdate =
+        AdminBlogPostUpdate Nothing Nothing Nothing Nothing Nothing Nothing
+    insertAndUpdatePost :: AdminBlogPostUpdate -> TestM (Maybe BlogPost)
+    insertAndUpdatePost updateParams = do
+        (uid, pid) <- runDB $ do
+            uid <- P.entityKey <$> makeUser
+            cid <- P.entityKey <$> makeBlogCategory "category"
+            (uid, ) . P.entityKey <$> makeBlogPost "title" "" uid cid Nothing
+        void $ updateBlogPost uid pid updateParams
+        runDB $ P.get pid
 
 
 -- | TODO: Move these to Handlers/BlogPostSpec.hs
@@ -247,6 +397,21 @@ sidebarCategoryTests = testGroup
 
 
 -- TODO: move these helpers to the Test.Utils module
+
+-- | Assert a value passes some conditon.
+satisfies :: (HasCallStack, Show a) => a -> (a -> Bool) -> Assertion
+satisfies val predicate =
+    let msg = show val <> " does not satisfy predicate."
+    in  assertBool msg (predicate val)
+
+-- | Assert two values are _not_ equal.
+(@?/=) :: (Eq a, Show a, HasCallStack) => a -> a -> Assertion
+(@?/=) actual expected = if actual /= expected
+    then return ()
+    else
+        assertFailure
+        $  "Expected different values, got the same:\n"
+        <> show expected
 
 makeUser :: MonadIO m => P.SqlPersistT m (P.Entity User)
 makeUser = P.insertEntity $ User "me" "hunter2"
