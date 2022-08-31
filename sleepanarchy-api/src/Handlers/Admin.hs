@@ -320,7 +320,15 @@ instance ToSample NewBlogPost where
           )
         ]
 
--- TODO: validation - non-empty title & slug, slug is unique
+-- TODO: validation:
+-- * non-empty title & slug
+-- * slug is unique(when specified)
+-- * category exists
+--
+-- TODO: Do we want to keep description auto-generation? Should it be first
+-- _paragraph_ of the content instead of the first line? Should we render
+-- the content field's markdown into HTML & take the first paragraph from
+-- that? Seems simpler to just require a non-empty Description field...
 createBlogPost :: (MonadIO m, DB m) => UserId -> NewBlogPost -> m BlogPostId
 createBlogPost uid NewBlogPost {..} = do
     let slug        = fromMaybe (slugify nbpTitle) nbpSlug

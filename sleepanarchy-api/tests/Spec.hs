@@ -2,7 +2,9 @@ import           Control.Exception.Safe         ( SomeException
                                                 , throwIO
                                                 , try
                                                 )
-import           Control.Monad                  ( void )
+import           Control.Monad                  ( (<=<)
+                                                , void
+                                                )
 import           Control.Monad.IO.Class         ( MonadIO(..) )
 import           Data.Aeson                     ( FromJSON(..)
                                                 , ToJSON(..)
@@ -113,7 +115,11 @@ adminTests = testGroup "Admin" [adminBlogTests]
 adminBlogTests :: TestTree
 adminBlogTests = testGroup
     "Blog"
-    [getBlogPostsAdminTests, getBlogPostAdminTests, updateBlogPostTests]
+    [ getBlogPostsAdminTests
+    , getBlogPostAdminTests
+    , updateBlogPostTests
+    , createBlogPostTests
+    ]
 
 getBlogPostsAdminTests :: TestTree
 getBlogPostsAdminTests = testGroup
@@ -393,6 +399,79 @@ sidebarCategoryTests = testGroup
             [ BlogSidebarCategoryData "category C" "category-c" 1
             , BlogSidebarCategoryData "category V" "category-v" 2
             ]
+    ]
+
+createBlogPostTests :: TestTree
+createBlogPostTests = testGroup
+    "createBlogPost"
+    [ testCase "Creates a new Blog Post" $ do
+        result <- testRunner $ do
+            (P.entityKey -> uid, P.entityKey -> cid) <-
+                runDB $ (,) <$> makeUser <*> makeBlogCategory "category"
+            pid <- createBlogPost
+                uid
+                NewBlogPost { nbpTitle       = "The Title"
+                            , nbpSlug        = Just "the-title"
+                            , nbpDescription = Just "short text"
+                            , nbpContent     = "Post's full content"
+                            , nbpTags        = "t1, t2"
+                            , nbpPublish     = False
+                            , nbpCategoryId  = cid
+                            }
+            runDB $ (,) <$> P.get pid <*> P.count @_ @_ @BlogPost []
+        snd <$> result @?= Right 1
+        (blogPostPublishedAt <=< fst) <$> result @?= Right Nothing
+    , testCase "Can publish the new post when creating" $ do
+        result <- testRunner $ do
+            (P.entityKey -> uid, P.entityKey -> cid) <-
+                runDB $ (,) <$> makeUser <*> makeBlogCategory "category"
+            pid <- createBlogPost
+                uid
+                NewBlogPost { nbpTitle       = "The Title"
+                            , nbpSlug        = Just "the-title"
+                            , nbpDescription = Just "short text"
+                            , nbpContent     = "Post's full content"
+                            , nbpTags        = "t1, t2"
+                            , nbpPublish     = True
+                            , nbpCategoryId  = cid
+                            }
+            runDB $ P.get pid
+        result `satisfies` isRight
+        let post = fromJust $ fromRight (error "checked") result
+        blogPostPublishedAt post `satisfies` isJust
+    , testCase "Can auto-generate the slug" $ do
+        result <- testRunner $ do
+            (P.entityKey -> uid, P.entityKey -> cid) <-
+                runDB $ (,) <$> makeUser <*> makeBlogCategory "category"
+            pid <- createBlogPost
+                uid
+                NewBlogPost { nbpTitle       = "The Title"
+                            , nbpSlug        = Nothing
+                            , nbpDescription = Just "short text"
+                            , nbpContent     = "Post's full content"
+                            , nbpTags        = "t1, t2"
+                            , nbpPublish     = True
+                            , nbpCategoryId  = cid
+                            }
+            fmap fromJust . runDB $ P.get pid
+        blogPostSlug <$> result @?= Right "the-title"
+    , testCase "Slug generation respects uniqueness" $ do
+        result <- testRunner $ do
+            (P.entityKey -> uid, P.entityKey -> cid) <-
+                runDB $ (,) <$> makeUser <*> makeBlogCategory "category"
+            void . runDB $ makeBlogPost "The Title" "" uid cid Nothing
+            pid <- createBlogPost
+                uid
+                NewBlogPost { nbpTitle       = "The Title"
+                            , nbpSlug        = Nothing
+                            , nbpDescription = Just "short text"
+                            , nbpContent     = "Post's full content"
+                            , nbpTags        = "t1, t2"
+                            , nbpPublish     = True
+                            , nbpCategoryId  = cid
+                            }
+            fmap fromJust . runDB $ P.get pid
+        blogPostSlug <$> result @?= Right "the-title-1"
     ]
 
 
