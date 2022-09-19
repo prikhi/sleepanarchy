@@ -119,6 +119,7 @@ adminBlogTests = testGroup
     , getBlogPostAdminTests
     , updateBlogPostTests
     , createBlogPostTests
+    , getBlogCategoriesAdminTests
     ]
 
 getBlogPostsAdminTests :: TestTree
@@ -256,6 +257,27 @@ updateBlogPostTests = testGroup
             (uid, ) . P.entityKey <$> makeBlogPost "title" "" uid cid Nothing
         void $ updateBlogPost uid pid updateParams
         runDB $ P.get pid
+
+getBlogCategoriesAdminTests :: TestTree
+getBlogCategoriesAdminTests = testGroup
+    "getBlogCategoriesAdmin"
+    [ testCase "Returns empty list when no categories exist" $ do
+        result <- testRunner $ do
+            uid <- P.entityKey <$> runDB makeUser
+            getBlogCategoriesAdmin uid
+        result @?= Right []
+    , testCase "Returns categories in alphabetical order" $ do
+        result <- testRunner $ do
+            (uid, firstId, secondId) <- runDB $ do
+                uid      <- P.entityKey <$> makeUser
+                secondId <- P.entityKey <$> makeBlogCategory "B"
+                firstId  <- P.entityKey <$> makeBlogCategory "A"
+                return (uid, firstId, secondId)
+            (firstId, secondId, ) <$> getBlogCategoriesAdmin uid
+        result `satisfies` isRight
+        let (id1, id2, categories) = fromRight (error "checked") result
+        categories @?= [AdminBlogCategory "A" id1, AdminBlogCategory "B" id2]
+    ]
 
 
 -- | TODO: Move these to Handlers/BlogPostSpec.hs

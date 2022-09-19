@@ -153,16 +153,20 @@ data AdminBlogCategory = AdminBlogCategory
 instance ToJSON AdminBlogCategory where
     toJSON = prefixToJSON "abc"
 
+instance ToSample AdminBlogCategory where
+    toSamples _ = map
+        ("", )
+        [ AdminBlogCategory "Category" $ P.fromBackendKey 3
+        , AdminBlogCategory "List" $ P.fromBackendKey 8
+        , AdminBlogCategory "That is Alphabetical" $ P.fromBackendKey 1
+        ]
+
 getBlogPostAdmin :: DBThrows m => UserId -> BlogPostId -> m AdminBlogPost
 getBlogPostAdmin _ pId = runDBThrow $ P.get pId >>= \case
     Nothing            -> throwM err404
     Just BlogPost {..} -> do
-        categories <-
-            map
-                    (\(P.Entity cId c) ->
-                        AdminBlogCategory (blogCategoryTitle c) cId
-                    )
-                <$> P.selectList [] [P.Desc BlogCategoryTitle]
+        categories <- map mkBlogCategory
+            <$> P.selectList [] [P.Asc BlogCategoryTitle]
         return AdminBlogPost { abpId          = pId
                              , abpTitle       = blogPostTitle
                              , abpSlug        = blogPostSlug
@@ -175,6 +179,14 @@ getBlogPostAdmin _ pId = runDBThrow $ P.get pId >>= \case
                              , abpPublishedAt = blogPostPublishedAt
                              , abpCategories  = categories
                              }
+
+getBlogCategoriesAdmin :: DB m => UserId -> m [AdminBlogCategory]
+getBlogCategoriesAdmin _ =
+    runDB $ map mkBlogCategory <$> P.selectList [] [P.Asc BlogCategoryTitle]
+
+mkBlogCategory :: P.Entity BlogCategory -> AdminBlogCategory
+mkBlogCategory (P.Entity cId c) = AdminBlogCategory (blogCategoryTitle c) cId
+
 
 -- BLOG POST UPDATE
 

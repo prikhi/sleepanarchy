@@ -160,6 +160,7 @@ type AdminAPI =
     :<|> "admin" :> "blog" :> "posts" :> Get '[JSON] AdminBlogPostList
     :<|> "admin" :> "blog" :> "post" :> Capture "blogPostId" BlogPostId :> Get '[JSON] AdminBlogPost
     :<|> "admin" :> "blog" :> "post" :> Capture "blogPostId" BlogPostId :> ReqBody '[JSON] AdminBlogPostUpdate :> Post '[JSON] NoContent
+    :<|> "admin" :> "blog" :> "categories" :> Get '[JSON] [AdminBlogCategory]
 
 adminApi :: AuthResult UserId -> ServerT AdminAPI App
 adminApi = \case
@@ -168,15 +169,22 @@ adminApi = \case
             :<|> getBlogPostsAdmin uid
             :<|> getBlogPostAdmin uid
             :<|> updateBlogPost uid
+            :<|> getBlogCategoriesAdmin uid
     _ -> throwAll err403
 
 adminNotes :: ExtraInfo (Pretty ServerAPI)
-adminNotes =
-    mkEndpointNotes
+adminNotes = mconcat
+    [ mkEndpointNotes
         @( Auth '[Cookie, JWT] UserId :> "admin" :> "blog" :> "post" :> Capture "blogPostId" BlogPostId :> Get '[JSON] AdminBlogPost
         )
         @ServerAPI
         ("Throws", ["* `404` if there is no matching post with the given ID."])
+    , mkEndpointNotes
+        @( Auth '[Cookie, JWT] UserId :> "admin" :> "blog" :> "post" :> Capture "blogPostId" BlogPostId :> ReqBody '[JSON] AdminBlogPostUpdate :> Post '[JSON] NoContent
+        )
+        @ServerAPI
+        ("Throws", ["* `404` if there is no matching post with the given ID."])
+    ]
 
 
 -- ORPHANS
