@@ -248,3 +248,36 @@ div.post-details
     padding-bottom: 1rem
     border-bottom: 1px solid $light-blue
     margin-bottom: 1.5rem
+
+
+/* Admin */
+.admin-post-list
+  table
+    width: calc(100% - 2rem)
+    margin: 0 1rem
+    border-collapse: collapse
+    th
+      border-bottom: 2px solid $near-white
+    th, td
+      text-align: left
+    th.date, td.date
+      text-align: center
+.admin-post-edit, .admin-post-create
+  padding: 1rem 3rem
+  form
+    display: flex
+    flex-direction: column
+  label
+    margin-bottom: 0.75rem
+  input
+    width: 100%
+  textarea
+    width: 100%
+  select
+    width: 100%
+  label.inline-input
+    display: inline-flex
+    > div
+      margin-right: 0.75rem
+    > select, > input
+      margin-right: -0.5rem

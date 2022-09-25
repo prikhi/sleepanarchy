@@ -19,6 +19,9 @@ import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import Pages.AdminBlogPostCreate as AdminBlogPostCreate
+import Pages.AdminBlogPostEdit as AdminBlogPostEdit
+import Pages.AdminBlogPostList as AdminBlogPostList
 import Pages.AdminDashboard as AdminDashboard
 import Pages.AdminLogin as AdminLogin
 import Pages.BlogPostArchive as BlogPostArchive
@@ -77,6 +80,9 @@ type Slots =
   -- TODO: shall we have a single slot for all Admin routes w/ an BaseAdmin component?
   , viewAdminLoginSlot :: forall query. H.Slot query Void (Maybe String)
   , viewAdminDashboardSlot :: forall query. H.Slot query Void Unit
+  , viewAdminBlogPostListSlot :: forall query. H.Slot query Void Unit
+  , viewAdminBlogPostEditSlot :: forall query. H.Slot query Void Int
+  , viewAdminBlogPostCreateSlot :: forall query. H.Slot query Void Unit
   )
 
 _homePage :: Proxy "homePageSlot"
@@ -99,6 +105,15 @@ _viewAdminLogin = Proxy
 
 _viewAdminDashboard :: Proxy "viewAdminDashboardSlot"
 _viewAdminDashboard = Proxy
+
+_viewAdminBlogPostList :: Proxy "viewAdminBlogPostListSlot"
+_viewAdminBlogPostList = Proxy
+
+_viewAdminBlogPostEdit :: Proxy "viewAdminBlogPostEditSlot"
+_viewAdminBlogPostEdit = Proxy
+
+_viewAdminBlogPostCreate :: Proxy "viewAdminBlogPostCreateSlot"
+_viewAdminBlogPostCreate = Proxy
 
 -- | The base app only cares about the current page & date, all other state is
 -- | stored within the various `Page.*` module componets.
@@ -268,3 +283,9 @@ renderAdmin = case _ of
     HH.slot_ _viewAdminLogin mbRedirect AdminLogin.page mbRedirect
   Dashboard ->
     HH.slot_ _viewAdminDashboard unit AdminDashboard.page unit
+  AdminBlogPostList ->
+    HH.slot_ _viewAdminBlogPostList unit AdminBlogPostList.page unit
+  AdminBlogPostEdit postId ->
+    HH.slot_ _viewAdminBlogPostEdit postId AdminBlogPostEdit.page postId
+  AdminBlogPostCreate ->
+    HH.slot_ _viewAdminBlogPostCreate unit AdminBlogPostCreate.page unit

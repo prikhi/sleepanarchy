@@ -8,6 +8,7 @@ import Data.DateTime (DateTime, Month, Year)
 import Data.DateTime.Parsing as DTP
 import Data.Either (Either, note)
 import Data.Enum (class BoundedEnum, toEnum)
+import Data.Maybe (Maybe)
 import Parsing (parseErrorMessage)
 
 -- GENERAL
@@ -101,4 +102,37 @@ type BlogPostDetails =
   , tags :: Array String
   , category :: BlogCategory
   , sidebar :: BlogSidebar
+  }
+
+-- ADMIN BLOG POST
+
+type AdminBlogPostList =
+  { posts :: Array AdminBlogPostListItem
+  }
+
+type AdminBlogPostListItem =
+  { id :: Int
+  , title :: String
+  , category :: String
+  , created :: ApiDateTime
+  , published :: Maybe ApiDateTime
+  }
+
+type AdminBlogPost =
+  { id :: Int
+  , title :: String
+  , slug :: String
+  , description :: String
+  , content :: String
+  , tags :: String
+  , category :: Int
+  , createdAt :: ApiDateTime
+  , updatedAt :: ApiDateTime
+  , publishedAt :: Maybe ApiDateTime
+  , categories :: Array AdminBlogCategory
+  }
+
+type AdminBlogCategory =
+  { id :: Int
+  , title :: String
   }

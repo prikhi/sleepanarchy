@@ -9,7 +9,8 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Router (Route(..))
+import Router (AdminRoute(..), Route(..), navLinkAttr)
+import Web.UIEvent.MouseEvent as ME
 
 page
   :: forall q i o m
@@ -32,6 +33,7 @@ initialState _ = false
 
 data Action
   = Initialize
+  | NavigateTo Route ME.MouseEvent
   | LogOut
 
 handleAction
@@ -45,6 +47,8 @@ handleAction = case _ of
   Initialize -> do
     isAuthed <- H.lift isLoggedIn
     H.modify_ $ const isAuthed
+  NavigateTo route ev -> do
+    H.lift $ newUrl route $ Just ev
   LogOut -> H.lift $ do
     setLoggedOut
     void adminLogout
@@ -56,6 +60,10 @@ render st =
     [ HH.h1_ [ HH.text "Dashboard" ]
     , HH.p_ [ HH.text "Nothing here yet, just a placeholder for testing auth." ]
     , HH.p_ [ HH.text $ "Logged in? " <> show st ]
+    , HH.p_
+        [ HH.a (navLinkAttr NavigateTo $ Admin AdminBlogPostList)
+            [ HH.text "Blog Posts" ]
+        ]
     , HH.button [ HP.type_ HP.ButtonButton, HE.onClick $ const LogOut ]
         [ HH.text "Log Out" ]
     ]

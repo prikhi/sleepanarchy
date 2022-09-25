@@ -137,7 +137,16 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
     * sub-category pages?
     * `/l/` shortlinks (simply proxy a server route that returns redirect?)
 * Admin site
-    * list/add/edit/delete posts
+    * Collapseable sidebar/nav
+    * Standardize styles
+    * Forms
+        * validation
+        * take aribtrary optional properties? for custom `type` or
+          `autocomplete`
+        * use `name` property
+        * convert args into config record
+    * Preview markdown fields (tabbed view? live side-by-side update?)
+    * (soft?) delete posts, w/ confirm
     * list/add/edit/delete blog categories
     * list/add/edit/delete links & categories
     * browse media directory, create folders, upload & delete files

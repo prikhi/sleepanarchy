@@ -18,15 +18,7 @@ import Data.Validation.Semiring (invalid)
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Routing (match)
-import Routing.Match
-  ( Match(..)
-  , end
-  , lit
-  , optionalMatch
-  , param
-  , root
-  , str
-  )
+import Routing.Match (Match(..), end, int, lit, optionalMatch, param, root, str)
 import Routing.Match.Error (MatchError(..))
 import Routing.Types (RoutePart(..))
 import Web.UIEvent.MouseEvent as ME
@@ -66,6 +58,9 @@ reverse = case _ of
 data AdminRoute
   = Login (Maybe String)
   | Dashboard
+  | AdminBlogPostList
+  | AdminBlogPostEdit Int
+  | AdminBlogPostCreate
 
 derive instance genericAdminRoute :: Generic AdminRoute _
 derive instance eqAdminRoute :: Eq AdminRoute
@@ -78,6 +73,9 @@ reverseAdmin = case _ of
     Nothing -> ""
     Just redirectTo -> "?redirectTo=" <> redirectTo
   Dashboard -> "/"
+  AdminBlogPostList -> "/posts"
+  AdminBlogPostEdit postId -> "/posts/" <> show postId
+  AdminBlogPostCreate -> "/posts/new"
 
 -- | Generate the 'href' & 'onClick' attributes for a link to an internal page.
 navLinkAttr
@@ -114,6 +112,9 @@ adminRouter =
   oneOf
     [ Login <$> (lit "login" *> redirectParam <* end)
     , Dashboard <$ end
+    , AdminBlogPostList <$ lit "posts" <* end
+    , AdminBlogPostEdit <$> (lit "posts" *> int) <* end
+    , AdminBlogPostCreate <$ lit "posts" <* lit "new" <* end
     ]
   where
   redirectParam :: Match (Maybe String)

@@ -8,7 +8,13 @@ import Affjax.RequestHeader as AXRH
 import Affjax.ResponseFormat as AXRF
 import Affjax.StatusCode (StatusCode(..))
 import Affjax.Web as AXW
-import Api.Types (BlogPostDetails, BlogPostList)
+import Api.Types
+  ( AdminBlogCategory
+  , AdminBlogPost
+  , AdminBlogPostList
+  , BlogPostDetails
+  , BlogPostList
+  )
 import Control.Monad.Except (ExceptT(..), except, runExceptT, throwError)
 import Data.Argonaut
   ( class DecodeJson
@@ -44,6 +50,11 @@ data Endpoint
   | BlogPostDetailsRequest String
   | AdminLogin { name :: String, password :: String }
   | AdminLogout
+  | AdminBlogPostListRequest
+  | AdminBlogPostRequest Int
+  | AdminBlogPostUpdateRequest Int Json
+  | AdminBlogPostCreateRequest Json
+  | AdminBlogCategoryRequest
 
 -- | Convert an API endpoint into it's URL, assuming a base path of `/api/`.
 endpointUrl :: Endpoint -> String
@@ -62,10 +73,22 @@ endpointUrl = (<>) "/api" <<< case _ of
     "/login"
   AdminLogout ->
     "/logout"
+  AdminBlogPostListRequest ->
+    "/admin/blog/posts"
+  AdminBlogPostRequest pId ->
+    "/admin/blog/post/" <> show pId
+  AdminBlogPostUpdateRequest pId _ ->
+    "/admin/blog/post/" <> show pId
+  AdminBlogPostCreateRequest _ ->
+    "/admin/blog/post"
+  AdminBlogCategoryRequest ->
+    "/admin/blog/categories"
 
 endpointRequestBody :: Endpoint -> Maybe Json
 endpointRequestBody = case _ of
   AdminLogin r -> Just $ encodeJson r
+  AdminBlogPostUpdateRequest _ form -> Just form
+  AdminBlogPostCreateRequest form -> Just form
   _ -> Nothing
 
 -- ERRORS
@@ -109,6 +132,11 @@ class Monad m <= ApiRequest m where
   blogPostDetailsRequest :: String -> m (Either ApiError BlogPostDetails)
   adminLogin :: String -> String -> m (Either ApiError Unit)
   adminLogout :: m (Either ApiError Unit)
+  adminBlogPostListRequest :: m (Either ApiError AdminBlogPostList)
+  adminBlogPostRequest :: Int -> m (Either ApiError AdminBlogPost)
+  adminBlogPostUpdateRequest :: Int -> Json -> m (Either ApiError Unit)
+  adminBlogPostCreateRequest :: Json -> m (Either ApiError Int)
+  adminBlogCategoriesRequest :: m (Either ApiError (Array AdminBlogCategory))
 
 instance appApiRequest :: MonadAff m => ApiRequest m where
   preventFormSubmission (SubmitFormEvent e) = liftEffect $ E.preventDefault e
@@ -120,6 +148,12 @@ instance appApiRequest :: MonadAff m => ApiRequest m where
   adminLogin name password = noContentPostRequest $ AdminLogin
     { name, password }
   adminLogout = noContentPostRequest AdminLogout
+  adminBlogPostListRequest = getRequest AdminBlogPostListRequest
+  adminBlogPostRequest = getRequest <<< AdminBlogPostRequest
+  adminBlogPostUpdateRequest pId form = noContentPostRequest $
+    AdminBlogPostUpdateRequest pId form
+  adminBlogPostCreateRequest = postRequest <<< AdminBlogPostCreateRequest
+  adminBlogCategoriesRequest = getRequest AdminBlogCategoryRequest
 
 -- REQUEST HELPERS
 
@@ -160,6 +194,23 @@ noContentPostRequest endpoint = runExceptT $ do
     throwError $ StatusCodeError response
   else
     pure unit
+
+postRequest
+  :: forall m a. MonadAff m => DecodeJson a => Endpoint -> m (Either ApiError a)
+postRequest endpoint = runExceptT $ do
+  response <- ExceptT $ lmap HttpError <$> liftAff
+    ( AXW.request AXW.defaultRequest
+        { responseFormat = AXRF.string
+        , url = endpointUrl endpoint
+        , content = AXRB.json <$> endpointRequestBody endpoint
+        , method = Left POST
+        }
+    )
+  let (StatusCode responseCode) = response.status
+  if responseCode >= 400 then
+    throwError $ StatusCodeError response
+  else
+    except $ decodeResponse response
 
 -- | Decode a JSON response & lift the error to 'ApiError'.
 -- |
