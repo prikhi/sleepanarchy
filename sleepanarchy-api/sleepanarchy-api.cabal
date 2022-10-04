@@ -36,7 +36,6 @@ library
       Handlers.BlogPosts
       Handlers.Login
       Handlers.Sitemap
-      Lib
       Models.DB
       Models.Utils
       Utils
