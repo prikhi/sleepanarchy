@@ -50,6 +50,8 @@ import qualified Hedgehog.Range                as Range
 
 main :: IO ()
 main = do
+    -- Run an blank test to initialize the database
+    void . testRunner $ return ()
     -- Run the pure tests with default parallelism
     Left pureExit <- try @_ @ExitCode $ defaultMain pureTests
     -- Restrict to single threaded testing for database tests
