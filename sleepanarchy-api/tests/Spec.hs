@@ -41,6 +41,7 @@ import           Models.Utils                   ( slugify )
 import           Test.Setup
 import           Utils
 
+import qualified Data.HashMap.Strict           as HM
 import qualified Data.Text                     as T
 import qualified Database.Persist.Sql          as P
 import qualified Hedgehog.Gen                  as Gen
@@ -65,10 +66,71 @@ pureTests = testGroup "Pure Tests" [unitTests, properties]
 
 -- | Placeholder / example for pure unit tests we may want to add.
 unitTests :: TestTree
-unitTests = testGroup "Unit Tests" [testCase "2+2 = 4" testAddition]
+unitTests = testGroup "Unit Tests" [appUnitTests, adminUnitTests]
+
+appUnitTests :: TestTree
+appUnitTests = testGroup "App" [foldersToSubPathTests]
+
+foldersToSubPathTests :: TestTree
+foldersToSubPathTests = testGroup
+    "foldersToSubPath"
+    [ testCase "Treats empty folders as root path" $ do
+        run [] @?= "."
+    , testCase "Allows root path" $ do
+        run ["/"] @?= "/"
+    , testCase "Ignores empty paths" $ do
+        run ["", "", ""] @?= "."
+        run ["", "first", "", "second"] @?= "first/second"
+    , testCase "Ignores parent segments" $ do
+        run [".."] @?= "."
+        run ["..", "nested"] @?= "nested"
+        run ["nested", "..", "infix"] @?= "nested/infix"
+        run ["nested/../inline"] @?= "nested/inline"
+    , testCase "Allows folders as elements or in elements" $ do
+        run ["nested/inline", "in-list"] @?= "nested/inline/in-list"
+    ]
   where
-    testAddition :: Assertion
-    testAddition = (2 + 2) @?= (4 :: Integer)
+    run :: [FilePath] -> FilePath
+    run = fromMediaSubPath . foldersToSubPath
+
+adminUnitTests :: TestTree
+adminUnitTests = testGroup "Admin" [adminMediaUnitTests]
+
+adminMediaUnitTests :: TestTree
+adminMediaUnitTests = testGroup "Media" [listMediaDirectoryTests]
+
+listMediaDirectoryTests :: TestTree
+listMediaDirectoryTests = testGroup
+    "listMediaDirectory"
+    [ testCase "Throws a 404 when directory does not exist" $ do
+        result <- testRunner
+            $ listMediaDirectory (P.toSqlKey 9001) ["non-existent"]
+        first errHTTPCode result @?= Left 404
+    , testCase "Lists single directory" $ do
+        let media = InMemoryDirectory $ HM.fromList
+                [ ( "dir1"
+                  , DirectoryNode . InMemoryDirectory $ HM.fromList
+                      [("f1", FileNode "file one")]
+                  )
+                , ( "dir2"
+                  , DirectoryNode . InMemoryDirectory $ HM.fromList
+                      [ ("f1"    , FileNode "file one")
+                      , ("f2.png", FileNode "file two")
+                      , ("dir3"  , DirectoryNode $ InMemoryDirectory HM.empty)
+                      ]
+                  )
+                ]
+        (finalMedia, result) <- customTestRunner media
+            $ listMediaDirectory (P.toSqlKey 9001) ["dir2"]
+        finalMedia @?= media
+        result @?= Right AdminMediaList
+            { amlBasePath = "/dir2/"
+            , amlContents = [ AdminMediaItem "dir3"   Directory
+                            , AdminMediaItem "f1"     Other
+                            , AdminMediaItem "f2.png" Image
+                            ]
+            }
+    ]
 
 properties :: TestTree
 properties = testGroup
@@ -110,7 +172,116 @@ dbTests :: TestTree
 dbTests = testGroup "DB Tests" [blogSidebarTests, adminTests]
 
 adminTests :: TestTree
-adminTests = testGroup "Admin" [adminBlogTests]
+adminTests = testGroup "Admin" [adminBlogTests, adminMediaTests]
+
+adminMediaTests :: TestTree
+adminMediaTests =
+    testGroup "Media" [createMediaDirectoryTests, uploadMediaFileTests]
+
+createMediaDirectoryTests :: TestTree
+createMediaDirectoryTests = testGroup
+    "createMediaDirectoryTests"
+    [ testCase "Throws a 403 when user does not exist" $ do
+        result <- testRunner $ createMediaDirectory (P.toSqlKey 9001) []
+        first errHTTPCode result @?= Left 403
+    , testCase "Throws a 422 if the directory path is a file" $ do
+        let media = InMemoryDirectory $ HM.fromList [("test", FileNode "")]
+        (finalMedia, result) <- customTestRunner media $ do
+            uid <- P.entityKey <$> runDB makeUser
+            createMediaDirectory uid ["test"]
+        first errHTTPCode result @?= Left 422
+        finalMedia @?= media
+    , testCase "Does not error if the directory already exists" $ do
+        let media = InMemoryDirectory $ HM.fromList
+                [("testDir", DirectoryNode $ InMemoryDirectory HM.empty)]
+        (finalMedia, result) <- customTestRunner media $ do
+            uid <- P.entityKey <$> runDB makeUser
+            createMediaDirectory uid ["testDir"]
+        result `satisfies` isRight
+        finalMedia @?= media
+    , testCase "Creates directories with arbitrary nesting" $ do
+        (finalMedia, result) <-
+            customTestRunner (InMemoryDirectory HM.empty) $ do
+                uid <- P.entityKey <$> runDB makeUser
+                createMediaDirectory uid ["nested/in", "list-and-string"]
+        result `satisfies` isRight
+        finalMedia @?= InMemoryDirectory
+            (HM.fromList
+                [ ( "nested"
+                  , DirectoryNode . InMemoryDirectory $ HM.fromList
+                      [ ( "in"
+                        , DirectoryNode $ InMemoryDirectory
+                            (HM.fromList
+                                [ ( "list-and-string"
+                                  , DirectoryNode $ InMemoryDirectory HM.empty
+                                  )
+                                ]
+                            )
+                        )
+                      ]
+                  )
+                ]
+            )
+    ]
+
+uploadMediaFileTests :: TestTree
+uploadMediaFileTests = testGroup
+    "uploadMediaFile"
+    [ testCase "Throws a 403 when user does not exist" $ do
+        result <- testRunner $ uploadMediaFile
+            (P.toSqlKey 9001)
+            (MediaUpload { muPath = []
+                         , muName = "filename.png"
+                         , muData = Base64Text "utf8-bin-data"
+                         }
+            )
+        first errHTTPCode result @?= Left 403
+    , testCase "Persists the uploaded file" $ do
+        let media = InMemoryDirectory $ HM.fromList
+                [ ( "nested"
+                  , DirectoryNode . InMemoryDirectory $ HM.fromList
+                      [("path", DirectoryNode $ InMemoryDirectory HM.empty)]
+                  )
+                ]
+        (finalMedia, result) <- customTestRunner media $ do
+            uid <- runDB $ P.entityKey <$> makeUser
+            uploadMediaFile uid $ MediaUpload
+                { muPath = ["nested", "path"]
+                , muName = "some-file.gif"
+                , muData = Base64Text "some-binary-text"
+                }
+        result `satisfies` isRight
+        finalMedia @?= InMemoryDirectory
+            (HM.fromList
+                [ ( "nested"
+                  , DirectoryNode . InMemoryDirectory $ HM.fromList
+                      [ ( "path"
+                        , DirectoryNode $ InMemoryDirectory $ HM.fromList
+                            [("some-file.gif", FileNode "some-binary-text")]
+                        )
+                      ]
+                  )
+                ]
+            )
+    , testCase "Does not override existing files" $ do
+        let media = InMemoryDirectory
+                $ HM.fromList [("test-file.txt", FileNode "contents")]
+        (finalMedia, result) <- customTestRunner media $ do
+            uid <- runDB $ P.entityKey <$> makeUser
+            uploadMediaFile uid $ MediaUpload
+                { muPath = []
+                , muName = "test-file.txt"
+                , muData = Base64Text "different stuff"
+                }
+        result `satisfies` isRight
+        finalMedia @?= InMemoryDirectory
+            (HM.fromList
+                [ ("test-file.txt"    , FileNode "contents")
+                , ("test-file-001.txt", FileNode "different stuff")
+                ]
+            )
+    ]
+
 
 adminBlogTests :: TestTree
 adminBlogTests = testGroup

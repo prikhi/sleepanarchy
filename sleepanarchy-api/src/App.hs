@@ -2,16 +2,40 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UndecidableInstances #-}
-module App where
+module App
+    ( Config(..)
+    , mkConfig
+    , Environment(..)
+    , App(..)
+    -- * DB
+    , HasDbPool(..)
+    , DB(..)
+    , DBThrows(..)
+    -- * Errors
+    , ThrowsError(..)
+    -- * Auth
+    , HasJwk(..)
+    , HasCookieSettings(..)
+    , AuthToken(..)
+    -- * Media
+    , HasMediaDir(..)
+    , Media(..)
+    , MediaSubPath
+    , fromMediaSubPath
+    , foldersToSubPath
+    ) where
 
 import           Control.Exception.Safe         ( MonadCatch
                                                 , MonadThrow
                                                 , try
                                                 )
+import           Control.Lens                   ( (^.) )
 import           Control.Monad                  ( (>=>)
                                                 , unless
                                                 )
-import           Control.Monad.Except           ( MonadError )
+import           Control.Monad.Except           ( ExceptT
+                                                , MonadError
+                                                )
 import           Control.Monad.Logger           ( NoLoggingT(runNoLoggingT)
                                                 , runStdoutLoggingT
                                                 )
@@ -45,8 +69,21 @@ import           Servant.Auth.Server            ( CookieSettings(..)
                                                 , generateKey
                                                 )
 import           Servant.Server                 ( Handler )
+import           System.Directory               ( createDirectoryIfMissing
+                                                , doesDirectoryExist
+                                                , doesFileExist
+                                                , doesPathExist
+                                                , listDirectory
+                                                , makeAbsolute
+                                                )
 import           System.Environment             ( lookupEnv )
 import           System.Exit                    ( exitFailure )
+import           System.FilePath                ( addTrailingPathSeparator
+                                                , joinPath
+                                                , normalise
+                                                , splitPath
+                                                )
+import           System.FilePath.Lens           ( directory )
 import           System.IO                      ( hPutStrLn
                                                 , stderr
                                                 )
@@ -54,6 +91,8 @@ import           Text.Read                      ( readMaybe )
 
 import           Models.DB                      ( migrateAll )
 
+import qualified Data.ByteString               as BS
+import qualified Data.ByteString.Char8         as BC
 import qualified Data.ByteString.Lazy.Char8    as LBC
 import qualified Data.Text                     as T
 
@@ -64,9 +103,11 @@ data Environment
     deriving (Show, Read, Eq)
 
 data Config = Config
-    { cfgDbPool            :: Pool SqlBackend
+    { cfgEnv               :: Environment
+    , cfgDbPool            :: Pool SqlBackend
     , cfgJwk               :: JWK
     , cfgCookieSettings    :: CookieSettings
+    , cfgMediaDirectory    :: FilePath
     , cfgLoggingMiddleware :: Application -> Application
     }
 
@@ -106,11 +147,38 @@ mkConfig = do
             { cookieXsrfSetting = Nothing
             , cookieMaxAge      = Just $ 60 * 60 * 24 * 365
             }
-    return Config { .. }
+    cfgMediaDirectory <- determineMediaDirectory
+    return Config { cfgEnv = env, .. }
   where
     dbConnectionString :: ConnectionString
     dbConnectionString =
         "host=localhost user=sleepanarchy-blog dbname=sleepanarchy-blog"
+    -- Determine & create the media directory if necessary. Checks the
+    -- @MEDIA_DIRECTORY@ environment variable, defaulting to @./media@ if
+    -- not defined. Exits with an error if the media directory is actually
+    -- a file.
+    determineMediaDirectory :: IO FilePath
+    determineMediaDirectory = do
+        rawDir <- lookupEnv "MEDIA_DIRECTORY" >>= \case
+            Nothing ->
+                hPutStrLn
+                        stderr
+                        "`MEDIA_DIRECTORY` environmental variable not set - using ./media"
+                    >> return "./media"
+            Just x -> return x
+        dir <- addTrailingPathSeparator . normalise <$> makeAbsolute rawDir
+        (exists, isFolder) <-
+            (,) <$> doesPathExist dir <*> doesDirectoryExist dir
+        if
+            | isFolder
+            -> return dir
+            | exists
+            -> putStrLn ("Specified media directory is a file: " <> dir)
+                >> exitFailure
+            | otherwise
+            -> putStrLn ("Specified media directory will be created: " <> dir)
+                >> createDirectoryIfMissing True dir
+                >> return dir
 
 
 
@@ -155,6 +223,9 @@ class ThrowsError m where
 instance ThrowsError App where
     serverError = throwError
 
+instance Monad m => ThrowsError (ExceptT ServerError m) where
+    serverError = throwError
+
 
 class HasJwk a where
     getJwk :: a -> JWK
@@ -176,3 +247,71 @@ class AuthToken m where
 instance (HasJwk cfg, HasCookieSettings cfg, MonadReader cfg m) => AuthToken m where
     getJWTSettings    = asks (defaultJWTSettings . getJwk)
     getCookieSettings = asks getCookieSettings_
+
+
+-- | Knows of the media directory.
+class HasMediaDir a where
+    -- | Get the base media directory.
+    getMediaDir :: a -> FilePath
+
+instance HasMediaDir Config where
+    getMediaDir = cfgMediaDirectory
+
+-- | Filesystem related actions contained within the media directory.
+class Media m where
+    -- Check a file or directory path exists.
+    subPathExists :: MediaSubPath -> m Bool
+    -- Check a file exists.
+    subFileExists :: MediaSubPath -> m Bool
+    -- Check a directory exists.
+    subDirectoryExists :: MediaSubPath -> m Bool
+    -- List the files & directories in a path.
+    subDirectoryContents :: MediaSubPath -> m [FilePath]
+    -- Write the file contents to the given subpath.
+    writeFileToSubPath :: MediaSubPath -> BS.ByteString -> m ()
+    -- Create the given sub-directories.
+    createSubDirectory :: MediaSubPath -> m ()
+
+
+-- | Warning: some of these will throw IOErrors but those are not captured
+-- in the type.
+instance (HasMediaDir cfg, MonadReader cfg m, MonadIO m) => Media m where
+    subPathExists subPath = withMediaDir subPath >>= liftIO . doesPathExist
+    subDirectoryExists subPath =
+        withMediaDir subPath >>= liftIO . doesDirectoryExist
+    subFileExists subPath = withMediaDir subPath >>= liftIO . doesFileExist
+    subDirectoryContents subPath =
+        withMediaDir subPath >>= liftIO . listDirectory
+    writeFileToSubPath subPath contents = do
+        path <- withMediaDir subPath
+        let dir = path ^. directory
+        liftIO $ createDirectoryIfMissing True dir >> BC.writeFile path contents
+    createSubDirectory subPath =
+        withMediaDir subPath >>= liftIO . createDirectoryIfMissing True
+
+
+withMediaDir
+    :: (HasMediaDir cfg, MonadReader cfg m) => MediaSubPath -> m FilePath
+withMediaDir (MediaSubPath subDir) = do
+    asks ((<> subDir) . getMediaDir)
+
+-- | Some directory or file path within the media directory.
+newtype MediaSubPath = MediaSubPath
+    { _fromMediaSubPath :: FilePath
+    } deriving (Show, Read, Eq, Ord)
+
+-- | Pull the relative FilePath from a MediaSubPath.
+fromMediaSubPath :: MediaSubPath -> FilePath
+fromMediaSubPath = _fromMediaSubPath
+
+-- | Convert a list of folder names & optional ending file into a subpath
+-- in the media directory.
+--
+-- Filters out an parent accessors & normalizes the path.
+foldersToSubPath :: [FilePath] -> MediaSubPath
+foldersToSubPath =
+    MediaSubPath
+        . normalise
+        . joinPath
+        . filter (`notElem` ["..", "../"])
+        . concatMap splitPath

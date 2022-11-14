@@ -12,6 +12,7 @@ import           Servant.API                    ( (:<|>)(..)
                                                 , (:>)
                                                 , Accept(..)
                                                 , Capture
+                                                , CaptureAll
                                                 , Get
                                                 , JSON
                                                 , MimeRender(..)
@@ -161,6 +162,9 @@ type AdminAPI =
     :<|> "admin" :> "blog" :> "post" :> Capture "blogPostId" BlogPostId :> Get '[JSON] AdminBlogPost
     :<|> "admin" :> "blog" :> "post" :> Capture "blogPostId" BlogPostId :> ReqBody '[JSON] AdminBlogPostUpdate :> Post '[JSON] NoContent
     :<|> "admin" :> "blog" :> "categories" :> Get '[JSON] [AdminBlogCategory]
+    :<|> "admin" :> "media" :> "list" :> CaptureAll "folderPath" FilePath :> Get '[JSON] AdminMediaList
+    :<|> "admin" :> "media" :> "folder" :> CaptureAll "folderPath" FilePath :> Post '[JSON] NoContent
+    :<|> "admin" :> "media" :> "upload" :> ReqBody '[JSON] MediaUpload :> Post '[JSON] NoContent
 
 adminApi :: AuthResult UserId -> ServerT AdminAPI App
 adminApi = \case
@@ -170,6 +174,9 @@ adminApi = \case
             :<|> getBlogPostAdmin uid
             :<|> updateBlogPost uid
             :<|> getBlogCategoriesAdmin uid
+            :<|> listMediaDirectory uid
+            :<|> createMediaDirectory uid
+            :<|> uploadMediaFile uid
     _ -> throwAll err403
 
 adminNotes :: ExtraInfo (Pretty ServerAPI)
@@ -208,6 +215,9 @@ instance ToCapture (Capture "year" Integer) where
 
 instance ToCapture (Capture "month" Int) where
     toCapture _ = DocCapture "month" "a month by it's number"
+
+instance ToCapture (CaptureAll "folderPath" FilePath) where
+    toCapture _ = DocCapture "folderPath" "relative path in media folder"
 
 -- TODO: MR to upstream servant-docs repo?
 instance FromJSON a => MimeUnrender PrettyJSON a where

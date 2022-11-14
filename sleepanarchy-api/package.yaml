@@ -47,6 +47,7 @@ default-extensions:
     - DeriveGeneric
     - LambdaCase
     - MonoLocalBinds
+    - MultiWayIf
     - NamedFieldPuns
     - OverloadedStrings
     - QuasiQuotes
@@ -65,13 +66,17 @@ library:
         src
     dependencies:
         - aeson
+        - base64
         - bytestring
         - containers
         - cookie
+        - directory
         - esqueleto
+        - filepath
         - http-media
         - jose
         - lens
+        - mime-types
         - monad-logger
         - mtl
         - password
@@ -138,6 +143,8 @@ tests:
             - sleepanarchy-api
             - aeson
             - bytestring
+            - directory
+            - filepath
             - hedgehog
             - monad-logger
             - mtl
@@ -146,8 +153,10 @@ tests:
             - resource-pool
             - safe-exceptions
             - servant-server
+            - stm
             - tasty
             - tasty-hedgehog
             - tasty-hunit
             - time
             - text
+            - unordered-containers

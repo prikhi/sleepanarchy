@@ -4,17 +4,24 @@ module Handlers.Admin where
 import           Control.Exception.Safe         ( throwM )
 import           Control.Monad                  ( forM
                                                 , unless
+                                                , when
                                                 )
 import           Control.Monad.IO.Class         ( MonadIO(..) )
 import           Data.Aeson                     ( FromJSON(..)
                                                 , ToJSON(..)
+                                                , Value(String)
                                                 , omitNothingFields
+                                                , withText
+                                                )
+import           Data.ByteString.Base64         ( decodeBase64
+                                                , encodeBase64
                                                 )
 import           Data.Maybe                     ( catMaybes
                                                 , fromMaybe
                                                 , listToMaybe
                                                 )
 import           Data.Text                      ( Text )
+import           Data.Text.Encoding             ( encodeUtf8 )
 import           Data.Time                      ( UTCTime(..)
                                                 , fromGregorian
                                                 , getCurrentTime
@@ -24,14 +31,27 @@ import           Database.Persist.Sql           ( SqlPersistT
                                                 , insertUnique
                                                 )
 import           GHC.Generics                   ( Generic )
-import           Servant                        ( NoContent(..) )
+import           Network.Mime                   ( defaultMimeLookup )
+import           Servant                        ( NoContent(..)
+                                                , err422
+                                                , errBody
+                                                )
 import           Servant.Docs                   ( ToSample(..)
                                                 , singleSample
                                                 )
-import           Servant.Server                 ( err404 )
+import           Servant.Server                 ( err403
+                                                , err404
+                                                )
+import           System.FilePath                ( addTrailingPathSeparator
+                                                , splitExtension
+                                                )
 
 import           App                            ( DB(..)
                                                 , DBThrows(..)
+                                                , Media(..)
+                                                , ThrowsError(..)
+                                                , foldersToSubPath
+                                                , fromMediaSubPath
                                                 )
 import           Models.DB
 import           Models.Utils                   ( slugify )
@@ -40,10 +60,202 @@ import           Utils                          ( prefixParseJSON
                                                 , prefixToJSONWith
                                                 )
 
+import qualified Data.ByteString               as BS
+import qualified Data.ByteString.Char8         as BC
+import qualified Data.List                     as L
 import qualified Data.Text                     as T
 import qualified Database.Esqueleto.Experimental
                                                as E
 import qualified Database.Persist.Sql          as P
+
+
+-- TODO: Split into Admin.BlogPosts & Admin.Media modules.
+
+-- MEDIA LIST
+
+-- | Media Directory Listing
+data AdminMediaList = AdminMediaList
+    { amlBasePath :: FilePath
+    -- ^ Requested path for the listing.
+    , amlContents :: [AdminMediaItem]
+    -- ^ Path's contents.
+    }
+    deriving (Show, Read, Eq, Ord, Generic)
+
+instance ToJSON AdminMediaList where
+    toJSON = prefixToJSON "aml"
+
+instance ToSample AdminMediaList where
+    toSamples _ = singleSample AdminMediaList
+        { amlBasePath = "/screenshots"
+        , amlContents = [ AdminMediaItem "desktop"                  Directory
+                        , AdminMediaItem "2021-04-20T04:20:00Z.png" Image
+                        , AdminMediaItem "postman.mkv"              Video
+                        ]
+        }
+
+-- | A Media Item in a Listing.
+data AdminMediaItem = AdminMediaItem
+    { amiName     :: FilePath
+    -- ^ Item's Name
+    , amiFileType :: FileType
+    -- ^ File or Directory type, with special cases for specific extensions
+    }
+    deriving (Show, Read, Eq, Ord, Generic)
+
+instance ToJSON AdminMediaItem where
+    toJSON = prefixToJSON "ami"
+
+-- | Enum of different file types, parsed from the file's extension / mime
+-- information.
+data FileType
+    = Image
+    | Video
+    | Audio
+    | Text
+    | Directory
+    | Other
+    deriving (Show ,Read , Eq, Ord, Generic)
+
+instance ToJSON FileType
+
+
+-- | Given some media directory sub-path, list the files & folders within
+-- that path.
+listMediaDirectory
+    :: (Media m, ThrowsError m, Monad m)
+    => UserId
+    -> [FilePath]
+    -> m AdminMediaList
+listMediaDirectory _ folders = do
+    let subPath    = foldersToSubPath folders
+        rawSubPath = fromMediaSubPath subPath
+    dirExists <- subDirectoryExists subPath
+    unless dirExists $ serverError err404
+    contents  <- subDirectoryContents subPath
+    processed <- forM (L.sort contents) $ \fp -> do
+        let subPathFile = foldersToSubPath [rawSubPath, fp]
+        isDirectory <- subDirectoryExists subPathFile
+        let fileType = if isDirectory then Directory else parseFileType fp
+        return $ AdminMediaItem fp fileType
+    let amlContents =
+            uncurry (<>) $ L.partition ((== Directory) . amiFileType) processed
+        amlBasePath = if rawSubPath == "."
+            then "/"
+            else "/" <> addTrailingPathSeparator rawSubPath
+    return AdminMediaList { .. }
+  where
+    parseFileType :: FilePath -> FileType
+    parseFileType fp =
+        case listToMaybe $ BC.split '/' $ defaultMimeLookup $ T.pack fp of
+            Just "image" -> Image
+            Just "video" -> Video
+            Just "audio" -> Audio
+            Just "text"  -> Text
+            _            -> Other
+
+-- | Create a new directory at the given path.
+--
+-- Throws a 422 if an existing file conflicts with the desired directory
+-- name.
+createMediaDirectory
+    :: (Media m, ThrowsError m, DB m, Monad m)
+    => UserId
+    -> [FilePath]
+    -> m NoContent
+createMediaDirectory uid folders = do
+    runDB (P.get uid) >>= maybe (serverError err403) (const $ return ())
+    let subPath = foldersToSubPath folders
+    fileExists <- subFileExists subPath
+    when fileExists $ serverError err422
+        { errBody = "File with desired folder name already exists."
+        }
+    createSubDirectory subPath
+    return NoContent
+
+
+-- | A File to upload.
+data MediaUpload = MediaUpload
+    { muPath :: [FilePath]
+    -- ^ Directory path where the file should be placed.
+    , muName :: FilePath
+    -- ^ Name of the file
+    , muData :: Base64Text
+    -- ^ Contents of the file.
+    --
+    -- Note: this is encoded/decoded as Base64 in JSON, but available as
+    -- a raw ByteString in Haskell.
+    }
+    deriving (Show, Read, Eq, Ord, Generic)
+
+instance ToSample MediaUpload where
+    toSamples _ = singleSample MediaUpload
+        { muPath = ["screenshots", "desktop"]
+        , muName = "my-vim-setup.png"
+        , muData = Base64Text "some image file data would be here"
+        }
+
+instance ToJSON MediaUpload where
+    toJSON = prefixToJSON "mu"
+instance FromJSON  MediaUpload where
+    parseJSON = prefixParseJSON "mu"
+
+-- | Binary text data decoded from Base64.
+--
+-- Note: The base64 representation is only present over-the-wire & is
+-- completely handled by JSON instances.
+newtype Base64Text = Base64Text
+    { fromBase64Text :: BS.ByteString
+    -- ^ Binary data encoded in UTF. TODO: could swap to bytestring.
+    } deriving (Show ,Read, Eq, Ord, Generic)
+
+instance ToJSON Base64Text where
+    toJSON = String . encodeBase64 . fromBase64Text
+instance FromJSON Base64Text where
+    parseJSON =
+        withText "Base64Text"
+            $ either (fail . T.unpack) (return . Base64Text)
+            . decodeBase64
+            . encodeUtf8
+
+-- | Upload a file, creating any necessary sub-directories & adding
+-- a suffix to the filename if a file with the given name already exists.
+uploadMediaFile
+    :: (Media m, DB m, ThrowsError m, Monad m)
+    => UserId
+    -> MediaUpload
+    -> m NoContent
+uploadMediaFile uid MediaUpload {..} = do
+    runDB (P.get uid) >>= maybe (serverError err403) (const $ return ())
+    _ <- saveFile 0
+    return NoContent
+  where
+    saveFile :: (Media m, Monad m) => Int -> m FilePath
+    saveFile = \case
+        0 -> do
+            let subPath = foldersToSubPath $ muPath <> [muName]
+            exists <- subPathExists subPath
+            if exists
+                then saveFile 1
+                else do
+                    writeFileToSubPath subPath $ fromBase64Text muData
+                    return $ fromMediaSubPath subPath
+        ix -> do
+            let (base, ext) = splitExtension muName
+                subPath =
+                    foldersToSubPath
+                        $  muPath
+                        <> [base <> "-" <> showWithPadding ix <> ext]
+            exists <- subPathExists subPath
+            if exists
+                then saveFile (ix + 1)
+                else do
+                    writeFileToSubPath subPath $ fromBase64Text muData
+                    return $ fromMediaSubPath subPath
+    showWithPadding :: Int -> String
+    showWithPadding ix | ix < 10   = "00" <> show ix
+                       | ix < 100  = "0" <> show ix
+                       | otherwise = show ix
 
 
 -- BLOG POST LIST

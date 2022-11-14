@@ -19,11 +19,13 @@ import           Servant.Server                 ( Application
                                                 , hoistServerWithContext
                                                 , serveWithContext
                                                 )
+import           Servant.Server.StaticFiles     ( serveDirectoryWebApp )
 
 import           Api.Routes
 import           App                            ( App
                                                 , AuthToken(..)
                                                 , Config(..)
+                                                , Environment(..)
                                                 , runApp
                                                 )
 
@@ -38,6 +40,9 @@ type DocsAPI = "docs" :> Get '[PlainText] Text
 appApiWithDocs :: Proxy (ServerAPI :<|> DocsAPI)
 appApiWithDocs = Proxy
 
+devApi :: Proxy ((ServerAPI :<|> DocsAPI) :<|> "media" :> Raw)
+devApi = Proxy
+
 apiServer :: Config -> Server (ServerAPI :<|> DocsAPI)
 apiServer cfg =
     hoistServerWithContext appApi
@@ -50,7 +55,12 @@ apiServer cfg =
     appToHandler = flip runReaderT cfg . runApp
 
 app :: Config -> Application
-app cfg = serveWithContext
-    appApiWithDocs
-    (getCookieSettings cfg :. getJWTSettings cfg :. EmptyContext)
-    (apiServer cfg)
+app cfg =
+    let context = (getCookieSettings cfg :. getJWTSettings cfg :. EmptyContext)
+        server  = apiServer cfg
+    in  case cfgEnv cfg of
+            Production -> serveWithContext appApiWithDocs context server
+            Development ->
+                serveWithContext devApi context
+                    $    server
+                    :<|> serveDirectoryWebApp (cfgMediaDirectory cfg)
