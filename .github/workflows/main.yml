@@ -50,7 +50,7 @@ jobs:
         with:
           enable-stack: true
           stack-no-global: true
-      - run: cd sleepanarchy-api && stack test --fast --haddock --pedantic --resolver lts-18
+      - run: cd sleepanarchy-api && stack test --fast --haddock --pedantic
         env:
           DB_PASS: hunter2
 
