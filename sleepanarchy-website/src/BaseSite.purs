@@ -5,6 +5,7 @@ import Prelude
 import Api (class ApiRequest)
 import App
   ( class Auth
+  , class FileUpload
   , class GetTime
   , class Markdown
   , class Navigation
@@ -24,6 +25,7 @@ import Pages.AdminBlogPostEdit as AdminBlogPostEdit
 import Pages.AdminBlogPostList as AdminBlogPostList
 import Pages.AdminDashboard as AdminDashboard
 import Pages.AdminLogin as AdminLogin
+import Pages.AdminMediaList as AdminMediaList
 import Pages.BlogPostArchive as BlogPostArchive
 import Pages.BlogPostCategory as BlogPostCategory
 import Pages.BlogPostList as BlogPostList
@@ -47,6 +49,7 @@ component
    . GetTime m
   => ApiRequest m
   => Auth m
+  => FileUpload m
   => Navigation m
   => Markdown m
   => H.Component Query Route o m
@@ -83,6 +86,7 @@ type Slots =
   , viewAdminBlogPostListSlot :: forall query. H.Slot query Void Unit
   , viewAdminBlogPostEditSlot :: forall query. H.Slot query Void Int
   , viewAdminBlogPostCreateSlot :: forall query. H.Slot query Void Unit
+  , viewAdminMediaListSlot :: forall query. H.Slot query Void (Array String)
   )
 
 _homePage :: Proxy "homePageSlot"
@@ -114,6 +118,9 @@ _viewAdminBlogPostEdit = Proxy
 
 _viewAdminBlogPostCreate :: Proxy "viewAdminBlogPostCreateSlot"
 _viewAdminBlogPostCreate = Proxy
+
+_viewAdminMediaList :: Proxy "viewAdminMediaListSlot"
+_viewAdminMediaList = Proxy
 
 -- | The base app only cares about the current page & date, all other state is
 -- | stored within the various `Page.*` module componets.
@@ -173,6 +180,7 @@ render
    . ApiRequest m
   => Navigation m
   => Auth m
+  => FileUpload m
   => Markdown m
   => State
   -> H.ComponentHTML Action Slots m
@@ -275,6 +283,7 @@ renderAdmin
   :: forall a m
    . ApiRequest m
   => Navigation m
+  => FileUpload m
   => Auth m
   => AdminRoute
   -> H.ComponentHTML a Slots m
@@ -289,3 +298,5 @@ renderAdmin = case _ of
     HH.slot_ _viewAdminBlogPostEdit postId AdminBlogPostEdit.page postId
   AdminBlogPostCreate ->
     HH.slot_ _viewAdminBlogPostCreate unit AdminBlogPostCreate.page unit
+  AdminMediaList folders ->
+    HH.slot_ _viewAdminMediaList folders AdminMediaList.page folders

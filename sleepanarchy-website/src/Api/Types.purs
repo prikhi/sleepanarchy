@@ -6,7 +6,7 @@ import Data.Argonaut (class DecodeJson, JsonDecodeError(..), decodeJson, (.:))
 import Data.Bifunctor (bimap)
 import Data.DateTime (DateTime, Month, Year)
 import Data.DateTime.Parsing as DTP
-import Data.Either (Either, note)
+import Data.Either (Either(..), note)
 import Data.Enum (class BoundedEnum, toEnum)
 import Data.Maybe (Maybe)
 import Parsing (parseErrorMessage)
@@ -136,3 +136,35 @@ type AdminBlogCategory =
   { id :: Int
   , title :: String
   }
+
+-- ADMIN MEDIA
+
+type AdminMediaList =
+  { basePath :: String
+  , contents :: Array AdminMediaListItem
+  }
+
+type AdminMediaListItem =
+  { name :: String
+  , fileType :: FileType
+  }
+
+data FileType
+  = Audio
+  | Video
+  | Image
+  | Text
+  | Directory
+  | Other
+
+derive instance eqFileType :: Eq FileType
+
+instance decodeJsonFileType :: DecodeJson FileType where
+  decodeJson json = decodeJson json >>= case _ of
+    "Audio" -> pure Audio
+    "Video" -> pure Video
+    "Image" -> pure Image
+    "Text" -> pure Text
+    "Directory" -> pure Directory
+    "Other" -> pure Other
+    unknown -> Left <<< TypeMismatch $ "Unknown FileType: " <> unknown

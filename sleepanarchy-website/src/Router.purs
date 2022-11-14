@@ -9,6 +9,7 @@ import Data.Foldable (oneOf)
 import Data.Generic.Rep (class Generic)
 import Data.Int as Int
 import Data.List (List(..))
+import Data.List as List
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Semiring.Free (free)
 import Data.Show.Generic (genericShow)
@@ -18,7 +19,7 @@ import Data.Validation.Semiring (invalid)
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Routing (match)
-import Routing.Match (Match(..), end, int, lit, optionalMatch, param, root, str)
+import Routing.Match (Match(..), end, int, list, lit, optionalMatch, param, root, str)
 import Routing.Match.Error (MatchError(..))
 import Routing.Types (RoutePart(..))
 import Web.UIEvent.MouseEvent as ME
@@ -61,6 +62,7 @@ data AdminRoute
   | AdminBlogPostList
   | AdminBlogPostEdit Int
   | AdminBlogPostCreate
+  | AdminMediaList (Array String)
 
 derive instance genericAdminRoute :: Generic AdminRoute _
 derive instance eqAdminRoute :: Eq AdminRoute
@@ -76,6 +78,7 @@ reverseAdmin = case _ of
   AdminBlogPostList -> "/posts"
   AdminBlogPostEdit postId -> "/posts/" <> show postId
   AdminBlogPostCreate -> "/posts/new"
+  AdminMediaList folders -> "/media/" <> String.joinWith "/" folders
 
 -- | Generate the 'href' & 'onClick' attributes for a link to an internal page.
 navLinkAttr
@@ -115,6 +118,7 @@ adminRouter =
     , AdminBlogPostList <$ lit "posts" <* end
     , AdminBlogPostEdit <$> (lit "posts" *> int) <* end
     , AdminBlogPostCreate <$ lit "posts" <* lit "new" <* end
+    , AdminMediaList <$> (map List.toUnfoldable $ lit "media" *> list str) <* end
     ]
   where
   redirectParam :: Match (Maybe String)

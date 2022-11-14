@@ -171,6 +171,9 @@ module.exports = (env, _) => {
                     target: "http://127.0.0.1:9001",
                     pathRewrite: { "^/api": "" },
                 },
+                "/media": {
+                    target: "http://127.0.0.1:9001/",
+                },
                 "/sitemap.xml": {
                     target: "http://127.0.0.1:9001/sitemap.xml",
                     pathRewrite: { ".*": "" },

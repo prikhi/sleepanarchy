@@ -14,6 +14,8 @@ module App
   , mkMarkdownInstance
   , class GetTime
   , getToday
+  , class FileUpload
+  , encodeBase64
   , class HasAuthStatus
   , getAuthStatusRef
   , class Auth
@@ -49,10 +51,11 @@ import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe, fromMaybe)
 import Data.Options ((:=))
 import Data.Show.Generic (genericShow)
+import Data.String as String
 import Data.Traversable (for)
 import Effect (Effect)
 import Effect.Aff (Aff)
-import Effect.Aff.Class (class MonadAff)
+import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Now (nowDate)
 import Effect.Ref (Ref)
@@ -65,6 +68,8 @@ import MarkdownIt as Markdown
 import Router (Route, reverse)
 import Routing.PushState (PushStateInterface)
 import Web.Event.Event (preventDefault)
+import Web.File.File (File, toBlob)
+import Web.File.FileReader.Aff (readAsDataURL)
 import Web.HTML (window)
 import Web.HTML.Window (localStorage)
 import Web.Storage.Storage as Storage
@@ -165,6 +170,17 @@ class Monad m <= GetTime m where
 
 instance monadEffectGetTime :: MonadEffect m => GetTime m where
   getToday = liftEffect nowDate
+
+-- FILE UPLOADS
+
+class Monad m <= FileUpload m where
+  encodeBase64 :: File -> m String
+
+instance monadEffectFileUpload :: MonadAff m => FileUpload m where
+  encodeBase64 file = liftAff $ do
+    dataUrl <- readAsDataURL $ toBlob file
+    pure $ String.drop 1 $ String.dropWhile (_ /= String.codePointFromChar ',')
+      dataUrl
 
 -- AUTH
 

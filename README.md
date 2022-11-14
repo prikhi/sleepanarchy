@@ -98,11 +98,8 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
 * Pastes
     * Decide to keep or ditch this? We link to a few pastes in our posts...
 * Media
-    * DB Model(folders + files)? Or just introspect filesystem?
-    * Passthrough public endpoint to filesystem(Development env only)
-    * Admin: Get folders / files
-    * Admin: Create folder
-    * Admin: Upload file
+    * Optimize PNG, GIF, & JPEGs on upload?
+    * Delete files
 
 
 ### CLIENT
@@ -149,7 +146,8 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
     * (soft?) delete posts, w/ confirm
     * list/add/edit/delete blog categories
     * list/add/edit/delete links & categories
-    * browse media directory, create folders, upload & delete files
+    * media: delete files
+    * media: folder icon, icons for files based on mimetype
 
 
 ### DEPLOY

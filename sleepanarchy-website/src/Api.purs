@@ -12,6 +12,7 @@ import Api.Types
   ( AdminBlogCategory
   , AdminBlogPost
   , AdminBlogPostList
+  , AdminMediaList
   , BlogPostDetails
   , BlogPostList
   )
@@ -32,6 +33,7 @@ import Data.Enum (fromEnum)
 import Data.HTTP.Method (Method(..))
 import Data.Maybe (Maybe(..))
 import Data.MediaType.Common (applicationJSON)
+import Data.String as String
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (liftEffect)
 import Foreign (ForeignError(..), unsafeToForeign)
@@ -55,6 +57,10 @@ data Endpoint
   | AdminBlogPostUpdateRequest Int Json
   | AdminBlogPostCreateRequest Json
   | AdminBlogCategoryRequest
+  | AdminMediaListRequest (Array String)
+  | AdminMediaFolderCreateRequest (Array String) String
+  | AdminMediaUploadRequest
+      { path :: Array String, name :: String, data :: String }
 
 -- | Convert an API endpoint into it's URL, assuming a base path of `/api/`.
 endpointUrl :: Endpoint -> String
@@ -83,12 +89,20 @@ endpointUrl = (<>) "/api" <<< case _ of
     "/admin/blog/post"
   AdminBlogCategoryRequest ->
     "/admin/blog/categories"
+  AdminMediaListRequest folders ->
+    "/admin/media/list/" <> String.joinWith "/" folders
+  AdminMediaFolderCreateRequest parentFolders newFolder ->
+    "/admin/media/folder/" <> String.joinWith "/" parentFolders <> "/" <>
+      newFolder
+  AdminMediaUploadRequest _ ->
+    "/admin/media/upload"
 
 endpointRequestBody :: Endpoint -> Maybe Json
 endpointRequestBody = case _ of
   AdminLogin r -> Just $ encodeJson r
   AdminBlogPostUpdateRequest _ form -> Just form
   AdminBlogPostCreateRequest form -> Just form
+  AdminMediaUploadRequest r -> Just $ encodeJson r
   _ -> Nothing
 
 -- ERRORS
@@ -137,6 +151,11 @@ class Monad m <= ApiRequest m where
   adminBlogPostUpdateRequest :: Int -> Json -> m (Either ApiError Unit)
   adminBlogPostCreateRequest :: Json -> m (Either ApiError Int)
   adminBlogCategoriesRequest :: m (Either ApiError (Array AdminBlogCategory))
+  adminMediaListRequest :: Array String -> m (Either ApiError AdminMediaList)
+  adminMediaFolderCreateRequest
+    :: Array String -> String -> m (Either ApiError Unit)
+  adminMediaUploadRequest
+    :: String -> String -> Array String -> m (Either ApiError Unit)
 
 instance appApiRequest :: MonadAff m => ApiRequest m where
   preventFormSubmission (SubmitFormEvent e) = liftEffect $ E.preventDefault e
@@ -154,6 +173,11 @@ instance appApiRequest :: MonadAff m => ApiRequest m where
     AdminBlogPostUpdateRequest pId form
   adminBlogPostCreateRequest = postRequest <<< AdminBlogPostCreateRequest
   adminBlogCategoriesRequest = getRequest AdminBlogCategoryRequest
+  adminMediaListRequest = getRequest <<< AdminMediaListRequest
+  adminMediaFolderCreateRequest parents = noContentPostRequest <<<
+    AdminMediaFolderCreateRequest parents
+  adminMediaUploadRequest name data_ path = noContentPostRequest $
+    AdminMediaUploadRequest { name, path, data: data_ }
 
 -- REQUEST HELPERS
 
