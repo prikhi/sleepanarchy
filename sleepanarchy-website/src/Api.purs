@@ -155,7 +155,7 @@ class Monad m <= ApiRequest m where
   adminMediaFolderCreateRequest
     :: Array String -> String -> m (Either ApiError Unit)
   adminMediaUploadRequest
-    :: String -> String -> Array String -> m (Either ApiError Unit)
+    :: String -> String -> Array String -> m (Either ApiError String)
 
 instance appApiRequest :: MonadAff m => ApiRequest m where
   preventFormSubmission (SubmitFormEvent e) = liftEffect $ E.preventDefault e
@@ -176,7 +176,7 @@ instance appApiRequest :: MonadAff m => ApiRequest m where
   adminMediaListRequest = getRequest <<< AdminMediaListRequest
   adminMediaFolderCreateRequest parents = noContentPostRequest <<<
     AdminMediaFolderCreateRequest parents
-  adminMediaUploadRequest name data_ path = noContentPostRequest $
+  adminMediaUploadRequest name data_ path = postRequest $
     AdminMediaUploadRequest { name, path, data: data_ }
 
 -- REQUEST HELPERS

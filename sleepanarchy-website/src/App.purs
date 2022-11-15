@@ -16,6 +16,7 @@ module App
   , getToday
   , class FileUpload
   , encodeBase64
+  , clearInputValue
   , class HasAuthStatus
   , getAuthStatusRef
   , class Auth
@@ -67,6 +68,7 @@ import MarkdownIt (MarkdownIt)
 import MarkdownIt as Markdown
 import Router (Route, reverse)
 import Routing.PushState (PushStateInterface)
+import Web.DOM (Element)
 import Web.Event.Event (preventDefault)
 import Web.File.File (File, toBlob)
 import Web.File.FileReader.Aff (readAsDataURL)
@@ -175,12 +177,16 @@ instance monadEffectGetTime :: MonadEffect m => GetTime m where
 
 class Monad m <= FileUpload m where
   encodeBase64 :: File -> m String
+  clearInputValue :: Element -> m Unit
 
 instance monadEffectFileUpload :: MonadAff m => FileUpload m where
   encodeBase64 file = liftAff $ do
     dataUrl <- readAsDataURL $ toBlob file
     pure $ String.drop 1 $ String.dropWhile (_ /= String.codePointFromChar ',')
       dataUrl
+  clearInputValue = liftEffect <<< _clearInputValue
+
+foreign import _clearInputValue :: Element -> Effect Unit
 
 -- AUTH
 

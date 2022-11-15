@@ -14,11 +14,18 @@ import Api
   , renderApiError
   )
 import Api.Types (AdminMediaList, AdminMediaListItem, FileType(..))
-import App (class FileUpload, class Navigation, encodeBase64, newUrl)
+import App
+  ( class FileUpload
+  , class Navigation
+  , clearInputValue
+  , encodeBase64
+  , newUrl
+  )
 import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String as String
+import Data.Traversable (traverse_)
 import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.HTML as HH
@@ -45,11 +52,19 @@ page = H.mkComponent
 type State =
   { folderPath :: Array String
   , newFolder :: String
+  , fileInputLabel :: H.RefLabel
   , apiData :: Maybe (Either ApiError AdminMediaList)
+  , fileUploadResponse :: Maybe (Either ApiError String)
   }
 
 initialState :: Array String -> State
-initialState folderPath = { folderPath, newFolder: "", apiData: Nothing }
+initialState folderPath =
+  { folderPath
+  , newFolder: ""
+  , fileInputLabel: H.RefLabel "file-input"
+  , apiData: Nothing
+  , fileUploadResponse: Nothing
+  }
 
 data Action
   = Initialize
@@ -84,8 +99,14 @@ handleAction = case _ of
       folderPath <- H.gets _.folderPath
       let fileName = name file
       encodedFile <- H.lift $ encodeBase64 file
-      -- TODO: Store response, show error, show link to new file
-      _ <- H.lift $ adminMediaUploadRequest fileName encodedFile folderPath
+      response <- H.lift $ adminMediaUploadRequest fileName encodedFile
+        folderPath
+      H.modify_ _ { fileUploadResponse = Just response }
+      case response of
+        Right _ ->
+          H.gets _.fileInputLabel >>= H.getRef >>= traverse_
+            (H.lift <<< clearInputValue)
+        Left _ -> pure unit
       requestCurrentPath
   NavigateTo route ev ->
     H.lift $ newUrl route $ Just ev
@@ -149,7 +170,19 @@ render st = case st.apiData of
     uploadFileHtml =
       HH.label_
         [ HH.text "Upload File "
-        , HH.input [ HP.type_ HP.InputFile, HE.onFileUpload UploadFile ]
+        , HH.input
+            [ HP.type_ HP.InputFile
+            , HE.onFileUpload UploadFile
+            , HP.ref st.fileInputLabel
+            ]
+        , HH.p_
+            [ case st.fileUploadResponse of
+                Nothing -> HH.text ""
+                Just (Left e) -> HH.text $ "Error uploading file: " <>
+                  renderApiError e
+                Just (Right fn) -> HH.span_
+                  [ HH.text "Successfully uploaded ", mkFileLink fn ]
+            ]
         ]
 
     renderItem :: forall w. AdminMediaListItem -> HH.HTML w Action
@@ -163,11 +196,12 @@ render st = case st.apiData of
               [ HH.text $ name <> "/" ]
           ]
       else
-        HH.li_
-          [ HH.a
-              [ HP.href $ "/media/" <> String.joinWith "/" st.folderPath <> "/"
-                  <> name
-              , HP.target "_blank"
-              ]
-              [ HH.text name ]
-          ]
+        HH.li_ [ mkFileLink name ]
+
+    mkFileLink :: forall w i. String -> HH.HTML w i
+    mkFileLink name = HH.a
+      [ HP.href $ "/media/" <> String.joinWith "/" st.folderPath <> "/"
+          <> name
+      , HP.target "_blank"
+      ]
+      [ HH.text name ]
