@@ -50,6 +50,7 @@ to generate this file without the comments in this block.
   , "transformers"
   , "tuples"
   , "validation"
+  , "web-dom"
   , "web-events"
   , "web-file"
   , "web-html"
