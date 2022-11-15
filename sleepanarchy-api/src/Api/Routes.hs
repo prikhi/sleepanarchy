@@ -164,7 +164,7 @@ type AdminAPI =
     :<|> "admin" :> "blog" :> "categories" :> Get '[JSON] [AdminBlogCategory]
     :<|> "admin" :> "media" :> "list" :> CaptureAll "folderPath" FilePath :> Get '[JSON] AdminMediaList
     :<|> "admin" :> "media" :> "folder" :> CaptureAll "folderPath" FilePath :> Post '[JSON] NoContent
-    :<|> "admin" :> "media" :> "upload" :> ReqBody '[JSON] MediaUpload :> Post '[JSON] NoContent
+    :<|> "admin" :> "media" :> "upload" :> ReqBody '[JSON] MediaUpload :> Post '[JSON] FileName
 
 adminApi :: AuthResult UserId -> ServerT AdminAPI App
 adminApi = \case

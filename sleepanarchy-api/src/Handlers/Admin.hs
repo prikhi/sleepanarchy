@@ -1,3 +1,5 @@
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RecordWildCards #-}
 module Handlers.Admin where
 
@@ -200,6 +202,16 @@ instance ToJSON MediaUpload where
 instance FromJSON  MediaUpload where
     parseJSON = prefixParseJSON "mu"
 
+-- | Name of a newly uploaded file.
+newtype FileName = FileName
+    { fromFileName :: FilePath
+    }
+    deriving (Show, Read, Eq, Ord)
+    deriving newtype (ToJSON)
+
+instance ToSample FileName where
+    toSamples _ = singleSample $ FileName "my-file.png"
+
 -- | Binary text data decoded from Base64.
 --
 -- Note: The base64 representation is only present over-the-wire & is
@@ -224,11 +236,10 @@ uploadMediaFile
     :: (Media m, DB m, ThrowsError m, Monad m)
     => UserId
     -> MediaUpload
-    -> m NoContent
+    -> m FileName
 uploadMediaFile uid MediaUpload {..} = do
     runDB (P.get uid) >>= maybe (serverError err403) (const $ return ())
-    _ <- saveFile 0
-    return NoContent
+    FileName <$> saveFile 0
   where
     saveFile :: (Media m, Monad m) => Int -> m FilePath
     saveFile = \case
