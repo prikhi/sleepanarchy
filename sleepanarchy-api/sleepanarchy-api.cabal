@@ -34,6 +34,7 @@ library
       App
       Handlers.Admin
       Handlers.BlogPosts
+      Handlers.Links
       Handlers.Login
       Handlers.Sitemap
       Models.DB

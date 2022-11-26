@@ -24,7 +24,10 @@ import           Data.Time                      ( UTCTime(UTCTime)
                                                 , getCurrentTime
                                                 )
 import           GHC.Generics                   ( Generic )
-import           Servant                        ( ServerError(..) )
+import           Servant                        ( Headers(..)
+                                                , ServerError(..)
+                                                , getHeaders
+                                                )
 import           System.Environment             ( setEnv )
 import           System.Exit                    ( ExitCode(..) )
 
@@ -36,6 +39,7 @@ import           Test.Tasty.Hedgehog
 import           App
 import           Handlers.Admin
 import           Handlers.BlogPosts
+import           Handlers.Links
 import           Models.DB
 import           Models.Utils                   ( slugify )
 import           Test.Setup
@@ -171,7 +175,7 @@ genPrefixJSONHelper =
 -- errors caused by multiple parallel tests making conflicting changes to
 -- the database.
 dbTests :: TestTree
-dbTests = testGroup "DB Tests" [blogSidebarTests, adminTests]
+dbTests = testGroup "DB Tests" [blogSidebarTests, linkTests, adminTests]
 
 adminTests :: TestTree
 adminTests = testGroup "Admin" [adminBlogTests, adminMediaTests]
@@ -669,6 +673,212 @@ createBlogPostTests = testGroup
         blogPostSlug <$> result @?= Right "the-title-1"
     ]
 
+-- TODO: Move these to Handlers/LinksSpec.hs
+linkTests :: TestTree
+linkTests = testGroup
+    "Links"
+    [getAllLinksTests, getLinkCategoryTests, redirectToLinkTests]
+
+getAllLinksTests :: TestTree
+getAllLinksTests = testGroup
+    "getAllLinks"
+    [ testCase "Returns empty list when no categories exist" $ do
+        result <- testRunner getAllLinks
+        result @?= Right (RootLinkCategories [])
+    , testCase "Drops empty categories recursively" $ do
+        result <- testRunner $ do
+            runDB $ do
+                rootId <- P.entityKey <$> makeLinkCategory "root" Nothing
+                void $ makeLinkCategory "child" $ Just rootId
+            getAllLinks
+        result @?= Right (RootLinkCategories [])
+    , testCase "Returns categories with only Links" $ do
+        result <- testRunner $ do
+            rootId  <- runDB $ P.entityKey <$> makeLinkCategory "root" Nothing
+            childId <- runDB $ P.entityKey <$> makeLinkCategory
+                "child"
+                (Just rootId)
+            void . runDB $ makeLink "some link" childId
+            getAllLinks
+        result @?= Right
+            (RootLinkCategories
+                [ LinkCategoryMap
+                      { lcmCategory    = "root"
+                      , lcmSlug        = "root"
+                      , lcmChildren    =
+                          [ LinkCategoryMap
+                                { lcmCategory    = "child"
+                                , lcmSlug        = "child"
+                                , lcmChildren    = []
+                                , lcmLinks       = [ LinkDetails
+                                                         { ldTitle = "some link"
+                                                         , ldSlug = "some-link"
+                                                         , ldDescription = ""
+                                                         , ldViews = 0
+                                                         }
+                                                   ]
+                                }
+                          ]
+                      , lcmLinks       = []
+                      }
+                ]
+            )
+    , testCase "Returns categories ordered by name" $ do
+        result <- testRunner $ do
+            runDB $ do
+                root2Id <- P.entityKey <$> makeLinkCategory "ZZZ" Nothing
+                root1Id <- P.entityKey <$> makeLinkCategory "AAA" Nothing
+                void $ makeLink "l2" root2Id
+                void $ makeLink "l1" root1Id
+            getAllLinks
+        result `satisfies` isRight
+        let RootLinkCategories cats = fromRight (error "checked") result
+        lcmCategory <$> cats @?= ["AAA", "ZZZ"]
+    , testCase "Returns links ordered by name" $ do
+        result <- testRunner $ do
+            runDB $ do
+                rootId <- P.entityKey <$> makeLinkCategory "root" Nothing
+                mapM_ (`makeLink` rootId) ["ZZZ", "AAA", "HHH"]
+            getAllLinks
+        result `satisfies` isRight
+        let RootLinkCategories (head -> rootCat) =
+                fromRight (error "checked") result
+        ldTitle <$> lcmLinks rootCat @?= ["AAA", "HHH", "ZZZ"]
+    ]
+
+getLinkCategoryTests :: TestTree
+getLinkCategoryTests = testGroup
+    "getLinkCategory"
+    [ testCase "Throws a 404 if no categories exist" $ do
+        result <- testRunner $ getLinkCategory "none"
+        first errHTTPCode result @?= Left 404
+    , testCase "Throws a 404 if the category does not exist" $ do
+        result <- testRunner $ do
+            runDB $ do
+                root1Id <- P.entityKey <$> makeLinkCategory "root1" Nothing
+                root2Id <- P.entityKey <$> makeLinkCategory "root2" Nothing
+                void $ makeLinkCategory "root3" Nothing
+                child1Id <- P.entityKey <$> makeLinkCategory "c1" (Just root1Id)
+                child2Id <- P.entityKey <$> makeLinkCategory "c2" (Just root1Id)
+                child3Id <- P.entityKey <$> makeLinkCategory "c3" (Just root2Id)
+                void $ makeLink "l1" child1Id
+                void $ makeLink "l2" child1Id
+                void $ makeLink "l3" child2Id
+                void $ makeLink "l4" child3Id
+            getLinkCategory "doesnt-exist"
+        first errHTTPCode result @?= Left 404
+    , testCase "Throws a 404 if the category has no links" $ do
+        result <- testRunner $ do
+            runDB $ do
+                root1Id <- P.entityKey <$> makeLinkCategory "root1" Nothing
+                void $ makeLinkCategory "c1" (Just root1Id)
+            getLinkCategory "c1"
+        first errHTTPCode result @?= Left 404
+    , testCase "Returns the correct root category" $ do
+        result <- testRunner $ do
+            runDB $ do
+                root1Id <- P.entityKey <$> makeLinkCategory "root1" Nothing
+                root2Id <- P.entityKey <$> makeLinkCategory "root2" Nothing
+                c1Id    <- P.entityKey <$> makeLinkCategory "c1" (Just root1Id)
+                void $ makeLink "c1l1" c1Id
+                void $ makeLink "c1l2" c1Id
+                void $ makeLink "r1l1" root1Id
+                void $ makeLink "r2l1" root2Id
+                void $ makeLink "r2l2" root2Id
+            getLinkCategory "root1"
+        result `satisfies` isRight
+        let lcMap = fromRight (error "checked") result
+        lcMap @?= LinkCategoryMap
+            { lcmCategory    = "root1"
+            , lcmSlug        = "root1"
+            , lcmChildren    =
+                [ LinkCategoryMap
+                      { lcmCategory    = "c1"
+                      , lcmSlug        = "c1"
+                      , lcmChildren    = []
+                      , lcmLinks       = [ LinkDetails { ldTitle       = "c1l1"
+                                                       , ldSlug        = "c1l1"
+                                                       , ldDescription = ""
+                                                       , ldViews       = 0
+                                                       }
+                                         , LinkDetails { ldTitle       = "c1l2"
+                                                       , ldSlug        = "c1l2"
+                                                       , ldDescription = ""
+                                                       , ldViews       = 0
+                                                       }
+                                         ]
+                      }
+                ]
+            , lcmLinks       = [ LinkDetails { ldTitle       = "r1l1"
+                                             , ldSlug        = "r1l1"
+                                             , ldDescription = ""
+                                             , ldViews       = 0
+                                             }
+                               ]
+            }
+    , testCase "Returns the correct sub-LinkCategoryMap" $ do
+        result <- testRunner $ do
+            runDB $ do
+                root1Id <- P.entityKey <$> makeLinkCategory "root1" Nothing
+                c1Id    <- P.entityKey <$> makeLinkCategory "c1" (Just root1Id)
+                c1c1Id  <- P.entityKey <$> makeLinkCategory "c1c1" (Just c1Id)
+                void $ makeLink "c1l1" c1Id
+                void $ makeLink "c1l2" c1Id
+                void $ makeLink "c1c1l1" c1c1Id
+                c2Id <- P.entityKey <$> makeLinkCategory "c2" (Just root1Id)
+                void $ makeLink "r1l1" root1Id
+                void $ makeLink "c2l1" c2Id
+            getLinkCategory "c1"
+        result `satisfies` isRight
+        let lcMap = fromRight (error "checked") result
+        lcMap @?= LinkCategoryMap
+            { lcmCategory    = "c1"
+            , lcmSlug        = "c1"
+            , lcmChildren    =
+                [ LinkCategoryMap
+                      { lcmCategory    = "c1c1"
+                      , lcmSlug        = "c1c1"
+                      , lcmChildren    = []
+                      , lcmLinks       = [ LinkDetails { ldTitle = "c1c1l1"
+                                                       , ldSlug = "c1c1l1"
+                                                       , ldDescription = ""
+                                                       , ldViews = 0
+                                                       }
+                                         ]
+                      }
+                ]
+            , lcmLinks       = [ LinkDetails { ldTitle       = "c1l1"
+                                             , ldSlug        = "c1l1"
+                                             , ldDescription = ""
+                                             , ldViews       = 0
+                                             }
+                               , LinkDetails { ldTitle       = "c1l2"
+                                             , ldSlug        = "c1l2"
+                                             , ldDescription = ""
+                                             , ldViews       = 0
+                                             }
+                               ]
+            }
+    ]
+
+redirectToLinkTests :: TestTree
+redirectToLinkTests = testGroup
+    "redirectToLink"
+    [ testCase "Throws a 404 when Link doesn't exist" $ do
+        result <- testRunner $ redirectToLink "doesnt-exist"
+        bimap errHTTPCode getResponse result @?= Left 404
+    , testCase "Returns expected Header & Body" $ do
+        result <- testRunner $ do
+            runDB $ do
+                rootId <- P.entityKey <$> makeLinkCategory "root" Nothing
+                linkId <- P.entityKey <$> makeLink "test link" rootId
+                P.update linkId [LinkLink P.=. "https://http.cat/302"]
+            redirectToLink "test-link"
+        second getResponse result @?= Right (RedirectBody "Found")
+        second (getHeaders . getHeadersHList) result
+            @?= Right [("Location", "https://http.cat/302")]
+    ]
+
 
 -- TODO: move these helpers to the Test.Utils module
 
@@ -724,3 +934,26 @@ mkBlogPost :: MonadIO m => Text -> UserId -> BlogCategoryId -> m BlogPost
 mkBlogPost title uid cid = do
     now <- liftIO getCurrentTime
     return $ BlogPost title (slugify title) "" "" "" uid cid now now Nothing
+
+makeLinkCategory
+    :: MonadIO m
+    => Text
+    -> Maybe LinkCategoryId
+    -> P.SqlPersistT m (P.Entity LinkCategory)
+makeLinkCategory title parentId =
+    P.insertEntity $ LinkCategory title (slugify title) parentId
+
+makeLink
+    :: MonadIO m => Text -> LinkCategoryId -> P.SqlPersistT m (P.Entity Link)
+makeLink title parentId = do
+    now <- liftIO getCurrentTime
+    P.insertEntity $ Link { linkTitle       = title
+                          , linkSlug        = slugify title
+                          , linkDescription = ""
+                          , linkLink        = "https://www.google.com"
+                          , linkTags        = ""
+                          , linkParentId    = parentId
+                          , linkViews       = 0
+                          , linkCreatedAt   = now
+                          , linkUpdatedAt   = now
+                          }

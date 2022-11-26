@@ -90,8 +90,8 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
     * Re-evaluate description auto-generation(render as markdown & then take
       first paragraph? Never auto-gen?)
 * Link Dump
-    * DB Model
-    * Fetch Route
+    * Sidebar data? Has "recent links", "top viewed links", "top categories",
+      "tag cloud". But do we actually care? Maybe later?
     * Admin: Create category
     * Admin: Add Link
     * Admin: Delete Link

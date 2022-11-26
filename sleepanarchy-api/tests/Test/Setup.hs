@@ -248,14 +248,15 @@ dropAllTables = forM_ tableDropOrder $ \tableName -> rawExecute
     -- For a table, get all it's references to other tables.
     getForeignRefs :: EntityDef -> [EntityNameHS]
     getForeignRefs entDef =
-        mapMaybe (getForeignRef . fieldReference) $ getEntityFields entDef
+        mapMaybe (getForeignRef (getEntityHaskellName entDef) . fieldReference)
+            $ getEntityFields entDef
     -- Extract the Haskell name for a table from a foreign key reference.
     --
     -- Note: ignores SelfReference because that shouldn't affect dropping.
     -- Note: ignores EmbedRef because I dunno what that is.
-    getForeignRef :: ReferenceDef -> Maybe EntityNameHS
-    getForeignRef = \case
-        ForeignRef r -> Just r
+    getForeignRef :: EntityNameHS -> ReferenceDef -> Maybe EntityNameHS
+    getForeignRef myName = \case
+        ForeignRef r -> if myName == r then Nothing else Just r
         _            -> Nothing
     -- Given a list of tables that can be dropped, iterate over a list of
     -- tables to process, adding any new tables to the drop list

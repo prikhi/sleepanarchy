@@ -61,6 +61,29 @@ BlogCategory
     UniqueBlogCategory slug
     deriving Show Read Eq Ord Generic
 
+
+Link
+    title Text
+    slug Text
+    description Text
+    link Text
+    -- TODO: ditch this for custom PostgresTextArray type?
+    -- Lets us process once on save instead of every fetch
+    tags Text
+    parentId LinkCategoryId OnDeleteCascade
+    views Int
+    createdAt UTCTime default=now()
+    updatedAt UTCTime default=now()
+    UniqueLink slug
+    deriving Show Read Eq Ord Generic
+
+LinkCategory
+    title Text
+    slug Text
+    parentId LinkCategoryId Maybe OnDeleteCascade
+    UniqueLinkDumpCategory slug
+    deriving Show Read Eq Ord Generic
+
 |]
 
 

@@ -14,12 +14,17 @@ import           Servant.API                    ( (:<|>)(..)
                                                 , Capture
                                                 , CaptureAll
                                                 , Get
+                                                , Header
+                                                , Headers
                                                 , JSON
                                                 , MimeRender(..)
                                                 , MimeUnrender(..)
                                                 , NoContent
+                                                , OctetStream
                                                 , Post
                                                 , ReqBody
+                                                , StdMethod(GET)
+                                                , Verb
                                                 )
 import           Servant.API.ContentTypes       ( eitherDecodeLenient )
 import           Servant.Auth.Docs              ( )
@@ -58,6 +63,7 @@ import           Web.Sitemap.Gen                ( ChangeFrequency(Daily)
 import           App                            ( App )
 import           Handlers.Admin
 import           Handlers.BlogPosts
+import           Handlers.Links
 import           Handlers.Login
 import           Handlers.Sitemap
 import           Models.DB
@@ -68,15 +74,16 @@ import qualified Network.HTTP.Media            as Media
 
 type ServerAPI =
          BlogAPI
+    :<|> LinkAPI
     :<|> LoginAPI
     :<|> SitemapAPI
     :<|> Auth '[Cookie, JWT] UserId :> AdminAPI
 
 api :: ServerT ServerAPI App
-api = blogApi :<|> loginApi :<|> sitemapApi :<|> adminApi
+api = blogApi :<|> linkApi :<|> loginApi :<|> sitemapApi :<|> adminApi
 
 apiEndpointDocs :: ExtraInfo (Pretty ServerAPI)
-apiEndpointDocs = blogNotes <> loginNotes <> adminNotes
+apiEndpointDocs = blogNotes <> linkNotes <> loginNotes <> adminNotes
 
 
 -- LOGIN
@@ -154,6 +161,35 @@ blogApi =
         :<|> getBlogPost
 
 
+-- LINKS
+
+type LinkAPI =
+         "links"  :> Get '[JSON] RootLinkCategories
+    :<|> "links" :> "redirect" :> Capture "linkSlug" Text :> Verb 'GET  302 '[OctetStream] (Headers '[Header "Location" RedirectLocation] RedirectBody)
+    :<|> "links" :> Capture "linkCategorySlug" Text :> Get '[JSON] LinkCategoryMap
+
+linkNotes :: ExtraInfo (Pretty ServerAPI)
+linkNotes = mconcat
+    [ mkEndpointNotes
+        @( "links" :> Capture "linkCategorySlug" Text :> Get '[JSON] LinkCategoryMap
+        )
+        @ServerAPI
+        ( "Throws"
+        , ["* `404` if there is no matching link category with the given slug."]
+        )
+    , mkEndpointNotes
+        @( "links" :> "redirect" :> Capture "linkSlug" Text :> Verb 'GET  302 '[OctetStream] (Headers '[Header "Location" RedirectLocation] RedirectBody)
+        )
+        @ServerAPI
+        ( "Throws"
+        , ["* `404` if there is no matching link with the given slug."]
+        )
+    ]
+
+linkApi :: ServerT LinkAPI App
+linkApi = getAllLinks :<|> redirectToLink :<|> getLinkCategory
+
+
 -- ADMIN
 
 type AdminAPI =
@@ -218,6 +254,12 @@ instance ToCapture (Capture "month" Int) where
 
 instance ToCapture (CaptureAll "folderPath" FilePath) where
     toCapture _ = DocCapture "folderPath" "relative path in media folder"
+
+instance ToCapture (Capture "linkCategorySlug" Text) where
+    toCapture _ = DocCapture "linkCategorySlug" "slug field of a LinkCategory"
+
+instance ToCapture (Capture "linkSlug" Text) where
+    toCapture _ = DocCapture "linkSlug" "slug field of a Link"
 
 -- TODO: MR to upstream servant-docs repo?
 instance FromJSON a => MimeUnrender PrettyJSON a where
