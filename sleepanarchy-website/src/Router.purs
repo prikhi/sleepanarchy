@@ -19,7 +19,17 @@ import Data.Validation.Semiring (invalid)
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Routing (match)
-import Routing.Match (Match(..), end, int, list, lit, optionalMatch, param, root, str)
+import Routing.Match
+  ( Match(..)
+  , end
+  , int
+  , list
+  , lit
+  , optionalMatch
+  , param
+  , root
+  , str
+  )
 import Routing.Match.Error (MatchError(..))
 import Routing.Types (RoutePart(..))
 import Web.UIEvent.MouseEvent as ME
@@ -31,6 +41,8 @@ data Route
   | ViewBlogArchive Year Month
   | ViewBlogTag String
   | ViewBlogCategory String
+  | ViewLinks
+  | ViewLinkCategory String
   | Admin AdminRoute
   | NotFound
 
@@ -48,6 +60,8 @@ reverse = case _ of
     show (fromEnum month)
   ViewBlogTag slug -> "/tag/" <> slugify slug
   ViewBlogCategory slug -> "/category/" <> slug
+  ViewLinks -> "/links"
+  ViewLinkCategory slug -> "/links/" <> slug
   Admin adminRoute -> "/admin" <> reverseAdmin adminRoute
   NotFound -> "/"
   where
@@ -106,6 +120,8 @@ router =
     , ViewBlogArchive <$> (lit "archive" *> enum) <*> enum <* end
     , ViewBlogTag <$> (lit "tag" *> str) <* end
     , ViewBlogCategory <$> (lit "category" *> str) <* end
+    , ViewLinks <$ lit "links" <* end
+    , ViewLinkCategory <$> (lit "links" *> str) <* end
     , Admin <$> (lit "admin" *> adminRouter)
     , pure NotFound
     ]
@@ -118,7 +134,8 @@ adminRouter =
     , AdminBlogPostList <$ lit "posts" <* end
     , AdminBlogPostEdit <$> (lit "posts" *> int) <* end
     , AdminBlogPostCreate <$ lit "posts" <* lit "new" <* end
-    , AdminMediaList <$> (map List.toUnfoldable $ lit "media" *> list str) <* end
+    , AdminMediaList <$> (map List.toUnfoldable $ lit "media" *> list str) <*
+        end
     ]
   where
   redirectParam :: Match (Maybe String)

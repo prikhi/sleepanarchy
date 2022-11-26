@@ -250,6 +250,36 @@ div.post-details
     margin-bottom: 1.5rem
 
 
+/* Links */
+
+div.link-page
+  table
+    width: 100%
+    border-collapse: collapse
+    border-spacing: 0
+    th
+      text-align: left
+      border-bottom: 2px solid $blue-gray
+    td
+      border-top: 1px solid $blue-gray
+    th, td
+      padding: 0.5rem 0.5rem 0.25rem
+    .category
+      background-color: $magenta
+      a
+        color: $body-text
+        &:hover
+          color: $body-text
+    .clickable
+      cursor: pointer
+      &:hover
+        background-color: lighten($body-background, 7.5%)
+      &.category:hover
+        background-color: lighten($magenta, 7.5%)
+      & a:hover
+       text-decoration: none
+
+
 /* Admin */
 .admin-post-list
   table

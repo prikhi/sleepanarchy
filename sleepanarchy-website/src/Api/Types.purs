@@ -104,6 +104,30 @@ type BlogPostDetails =
   , sidebar :: BlogSidebar
   }
 
+-- Links
+
+type RootLinkCategories = Array LinkCategoryMap
+
+newtype LinkCategoryMap =
+  LinkCategoryMap
+    { category :: String
+    , slug :: String
+    , children :: Array LinkCategoryMap
+    , links :: Array LinkDetails
+    }
+
+instance decodeJsonLinkCategoryMap :: DecodeJson LinkCategoryMap where
+  decodeJson json = do
+    obj <- decodeJson json
+    pure $ LinkCategoryMap obj
+
+type LinkDetails =
+  { title :: String
+  , slug :: String
+  , description :: String
+  , views :: Int
+  }
+
 -- ADMIN BLOG POST
 
 type AdminBlogPostList =

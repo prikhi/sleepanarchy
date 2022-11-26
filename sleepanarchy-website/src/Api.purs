@@ -15,6 +15,8 @@ import Api.Types
   , AdminMediaList
   , BlogPostDetails
   , BlogPostList
+  , LinkCategoryMap
+  , RootLinkCategories
   )
 import Control.Monad.Except (ExceptT(..), except, runExceptT, throwError)
 import Data.Argonaut
@@ -50,6 +52,8 @@ data Endpoint
   | BlogPostTagRequest String
   | BlogPostCategoryRequest String
   | BlogPostDetailsRequest String
+  | LinkListRequest
+  | LinkCategoryRequest String
   | AdminLogin { name :: String, password :: String }
   | AdminLogout
   | AdminBlogPostListRequest
@@ -75,6 +79,10 @@ endpointUrl = (<>) "/api" <<< case _ of
     "/blog/posts/category/" <> slug
   BlogPostDetailsRequest slug ->
     "/blog/post/" <> slug
+  LinkListRequest ->
+    "/links/"
+  LinkCategoryRequest slug ->
+    "/links/" <> slug
   AdminLogin _ ->
     "/login"
   AdminLogout ->
@@ -144,6 +152,8 @@ class Monad m <= ApiRequest m where
   blogPostTagRequest :: String -> m (Either ApiError BlogPostList)
   blogPostCategoryRequest :: String -> m (Either ApiError BlogPostList)
   blogPostDetailsRequest :: String -> m (Either ApiError BlogPostDetails)
+  linkListRequest :: m (Either ApiError RootLinkCategories)
+  linkCategoryRequest :: String -> m (Either ApiError LinkCategoryMap)
   adminLogin :: String -> String -> m (Either ApiError Unit)
   adminLogout :: m (Either ApiError Unit)
   adminBlogPostListRequest :: m (Either ApiError AdminBlogPostList)
@@ -164,6 +174,8 @@ instance appApiRequest :: MonadAff m => ApiRequest m where
   blogPostTagRequest = getRequest <<< BlogPostTagRequest
   blogPostCategoryRequest = getRequest <<< BlogPostCategoryRequest
   blogPostDetailsRequest = getRequest <<< BlogPostDetailsRequest
+  linkListRequest = getRequest LinkListRequest
+  linkCategoryRequest = getRequest <<< LinkCategoryRequest
   adminLogin name password = noContentPostRequest $ AdminLogin
     { name, password }
   adminLogout = noContentPostRequest AdminLogout

@@ -6,6 +6,7 @@ module App
   , getNav
   , class Navigation
   , newUrl
+  , openInNewTab
   , class HasMarkdown
   , getMarkdown
   , class Markdown
@@ -73,7 +74,7 @@ import Web.Event.Event (preventDefault)
 import Web.File.File (File, toBlob)
 import Web.File.FileReader.Aff (readAsDataURL)
 import Web.HTML (window)
-import Web.HTML.Window (localStorage)
+import Web.HTML.Window (localStorage, open)
 import Web.Storage.Storage as Storage
 import Web.UIEvent.MouseEvent as ME
 
@@ -118,6 +119,8 @@ class Monad m <= Navigation m where
   -- | Set the page's URL to the URL for the given Route & call
   -- | `preventDefault` on the given event if present.
   newUrl :: Route -> Maybe ME.MouseEvent -> m Unit
+  -- | Open the given URL in a new browser tab.
+  openInNewTab :: String -> m Unit
 
 instance navigationHasNav ::
   ( HasNav env
@@ -129,6 +132,8 @@ instance navigationHasNav ::
     void $ for mbEvent $ ME.toEvent >>> preventDefault >>> liftEffect
     nav <- asks getNav
     liftEffect $ nav.pushState (unsafeToForeign {}) $ reverse url
+  openInNewTab url =
+    liftEffect $ window >>= open url "_blank" "" >>> void
 
 -- MARKDOWN
 

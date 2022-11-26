@@ -31,6 +31,8 @@ import Pages.BlogPostCategory as BlogPostCategory
 import Pages.BlogPostList as BlogPostList
 import Pages.BlogPostTag as BlogPostTag
 import Pages.BlogPostView as BlogPostView
+import Pages.LinkCategoryView as LinkCategoryView
+import Pages.LinkView as LinkView
 import Router
   ( AdminRoute(..)
   , Route(..)
@@ -80,6 +82,8 @@ type Slots =
   , viewBlogTagSlot :: forall query. H.Slot query Void BlogPostTag.Input
   , viewBlogCategorySlot ::
       forall query. H.Slot query Void BlogPostCategory.Input
+  , viewLinks :: forall query. H.Slot query Void Unit
+  , viewLinkCategory :: forall query. H.Slot query Void String
   -- TODO: shall we have a single slot for all Admin routes w/ an BaseAdmin component?
   , viewAdminLoginSlot :: forall query. H.Slot query Void (Maybe String)
   , viewAdminDashboardSlot :: forall query. H.Slot query Void Unit
@@ -103,6 +107,12 @@ _viewBlogPostTag = Proxy
 
 _viewBlogPostCategory :: Proxy "viewBlogCategorySlot"
 _viewBlogPostCategory = Proxy
+
+_viewLinks :: Proxy "viewLinks"
+_viewLinks = Proxy
+
+_viewLinkCategory :: Proxy "viewLinkCategory"
+_viewLinkCategory = Proxy
 
 _viewAdminLogin :: Proxy "viewAdminLoginSlot"
 _viewAdminLogin = Proxy
@@ -201,7 +211,7 @@ renderHeader :: forall s m. Route -> H.ComponentHTML Action s m
 renderHeader currentPage =
   let
     activePageClass route =
-      if route == currentPage then [ H.ClassName "active" ] else []
+      if isInPageHierarchy route then [ H.ClassName "active" ] else []
     navLink text route =
       HH.a
         ((navLinkAttr NavClick route) <> [ HP.classes (activePageClass route) ])
@@ -213,10 +223,20 @@ renderHeader currentPage =
       , HH.div [ HP.class_ $ HH.ClassName "nav" ]
           [ HH.ul_
               [ HH.li_ [ navLink "Home" Home ]
-              , HH.li_ [ HH.a_ [ HH.text "Links" ] ]
+              , HH.li_ [ navLink "Links" ViewLinks ]
               ]
           ]
       ]
+  where
+  isInPageHierarchy :: Route -> Boolean
+  isInPageHierarchy navPage = navPage == currentPage ||
+    case Tuple navPage currentPage of
+      Tuple Home (ViewBlogPost _) -> true
+      Tuple Home (ViewBlogArchive _ _) -> true
+      Tuple Home (ViewBlogTag _) -> true
+      Tuple Home (ViewBlogCategory _) -> true
+      Tuple ViewLinks (ViewLinkCategory _) -> true
+      _ -> false
 
 renderFooter :: forall w i. Date -> HH.HTML w i
 renderFooter currentDate =
@@ -272,6 +292,10 @@ renderPage = pageWrapper <<< case _ of
     HH.slot_ _viewBlogPostTag slug BlogPostTag.page slug
   ViewBlogCategory slug ->
     HH.slot_ _viewBlogPostCategory slug BlogPostCategory.page slug
+  ViewLinks ->
+    HH.slot_ _viewLinks unit LinkView.page unit
+  ViewLinkCategory slug ->
+    HH.slot_ _viewLinkCategory slug LinkCategoryView.page slug
   page ->
     HH.h1_ [ HH.text $ show page ]
   where

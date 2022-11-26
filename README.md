@@ -129,10 +129,6 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
     * published date formatting(X days ago)
     * Add feeds to sidebar? Or footer? Or both?
     * 404 page
-* Link Dump
-    * root category page
-    * sub-category pages?
-    * `/l/` shortlinks (simply proxy a server route that returns redirect?)
 * Admin site
     * Collapseable sidebar/nav
     * Standardize styles

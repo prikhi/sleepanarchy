@@ -178,6 +178,10 @@ module.exports = (env, _) => {
                     target: "http://127.0.0.1:9001/sitemap.xml",
                     pathRewrite: { ".*": "" },
                 },
+                "/l/": {
+                  target: "http://127.0.0.1:9001",
+                  pathRewrite: { "^/l/": "links/redirect/" }
+                }
             },
         },
         optimization: {
