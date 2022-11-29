@@ -45,8 +45,30 @@ generateSitemap = runDB $ do
             <$> selectList [BlogCategoryId <-. M.keys categories] []
     let archiveUrls = map mkArchiveUrl $ M.assocs archiveDates
         tagUrls     = map mkTagUrl $ M.assocs tags
-    return $ Sitemap $ (homepageUrl :) $ concat
-        [postUrls, categoryUrls, archiveUrls, tagUrls]
+    links <- selectList [] []
+    let linkMap = foldr
+            (\(Entity _ link) -> M.insertWith (<>)
+                                              (linkParentId link)
+                                              (Max $ linkUpdatedAt link)
+            )
+            M.empty
+            links
+    linkCategoryUrls <- map (mkLinkCategoryUrl linkMap) <$> selectList [] []
+    let newestLinkDate = safeMaximum $ map (linkUpdatedAt . entityVal) links
+        linksUrl       = SitemapUrl
+            { sitemapLocation        = baseUrl <> routeToPath ViewLinks
+            , sitemapLastModified    = newestLinkDate
+            , sitemapChangeFrequency = Just Weekly
+            , sitemapPriority        = Just 0.5
+            }
+    return $ Sitemap $ concat
+        [ [homepageUrl, linksUrl]
+        , postUrls
+        , categoryUrls
+        , archiveUrls
+        , tagUrls
+        , linkCategoryUrls
+        ]
   where
     baseUrl :: Text
     baseUrl = "https://sleepanarchy.com"
@@ -122,6 +144,15 @@ generateSitemap = runDB $ do
         , sitemapPriority        = Just 0.1
         }
 
+    mkLinkCategoryUrl
+        :: UpdatedMap LinkCategoryId -> Entity LinkCategory -> SitemapUrl
+    mkLinkCategoryUrl updatedMap (Entity catId LinkCategory {..}) = SitemapUrl
+        { sitemapLocation = renderLocation $ ViewLinkCategory linkCategorySlug
+        , sitemapLastModified    = getMax <$> M.lookup catId updatedMap
+        , sitemapChangeFrequency = Nothing
+        , sitemapPriority        = Just 0.2
+        }
+
 -- | Type corresponding to valid frontend routes. Should match up with the
 -- corresponding client type in the @src/Router.purs@ file.
 data Route
@@ -130,6 +161,8 @@ data Route
   | ViewBlogArchive Integer Int
   | ViewBlogTag Text
   | ViewBlogCategory Text
+  | ViewLinks
+  | ViewLinkCategory Text
 
 -- | Generate the canonical URL for a Route.
 routeToPath :: Route -> Text
@@ -140,6 +173,8 @@ routeToPath = \case
         "/archive/" <> T.pack (show year) <> "/" <> T.pack (show month)
     ViewBlogTag      slug -> "/tag/" <> slug
     ViewBlogCategory slug -> "/category/" <> slug
+    ViewLinks             -> "/links"
+    ViewLinkCategory slug -> "/links/" <> slug
 
 
 -- | Store some value associated with a post along with the maximum updated
