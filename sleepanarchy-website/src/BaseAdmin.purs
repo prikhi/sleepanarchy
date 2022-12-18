@@ -22,7 +22,7 @@ import Pages.AdminDashboard as AdminDashboard
 import Pages.AdminLogin as AdminLogin
 import Pages.AdminMediaList as AdminMediaList
 import Router (AdminRoute(..), Route(..), navLinkAttr)
-import Type.Prelude (Proxy(..))
+import Type.Proxy (Proxy(..))
 import Web.UIEvent.MouseEvent as ME
 
 component
