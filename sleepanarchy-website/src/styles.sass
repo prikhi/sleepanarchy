@@ -281,6 +281,51 @@ div.link-page
 
 
 /* Admin */
+
+.admin-site
+  display: flex
+  height: 100%
+  .admin-content
+    flex-grow: 1
+    padding: 1rem 1rem 1rem 2rem
+  .admin-sidebar
+    background-color: $near-black
+    padding: 1rem 0
+    border-right: 1px solid $near-white
+    > h4
+      padding: 15vh 1rem 0rem
+      margin-bottom: 0
+      text-align: center
+    > p
+      padding: 0.5rem 1rem
+      font-size: 0.8rem
+      text-align: center
+      a
+        color: $near-white
+        transition: border 0.25s
+        border-bottom: 1px solid transparent
+        &:hover
+          border-bottom: 1px solid $near-white
+    > ul.nav-links
+      list-style: none
+      padding: 0
+      li
+        border-bottom: 1px solid $magenta
+        &:first-of-type
+          border-top: 1px solid $magenta
+        > a
+          display: block
+          padding: 0.75rem 1.25rem
+          font-weight: bold
+          color: $near-white
+          transition: background-color 0.25s
+          &:hover
+            background-color: lighten($body-background, 5%)
+          &.active
+            background-color: $blue-gray
+            &:hover
+              background-color: lighten($blue-gray, 5%)
+
 .admin-post-list
   table
     width: calc(100% - 2rem)

@@ -130,7 +130,8 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
     * Add feeds to sidebar? Or footer? Or both?
     * 404 page
 * Admin site
-    * Collapseable sidebar/nav
+    * Add icons to sidebar items
+    * Collapseable sidebar
     * Standardize styles
     * Forms
         * validation

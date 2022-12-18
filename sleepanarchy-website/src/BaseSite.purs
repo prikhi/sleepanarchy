@@ -13,6 +13,7 @@ import App
   , isLoggedIn
   , newUrl
   )
+import BaseAdmin as BaseAdmin
 import Data.Date (Date, canonicalDate, year)
 import Data.Enum (fromEnum)
 import Data.Maybe (Maybe(..))
@@ -20,12 +21,6 @@ import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Pages.AdminBlogPostCreate as AdminBlogPostCreate
-import Pages.AdminBlogPostEdit as AdminBlogPostEdit
-import Pages.AdminBlogPostList as AdminBlogPostList
-import Pages.AdminDashboard as AdminDashboard
-import Pages.AdminLogin as AdminLogin
-import Pages.AdminMediaList as AdminMediaList
 import Pages.BlogPostArchive as BlogPostArchive
 import Pages.BlogPostCategory as BlogPostCategory
 import Pages.BlogPostList as BlogPostList
@@ -82,15 +77,9 @@ type Slots =
   , viewBlogTagSlot :: forall query. H.Slot query Void BlogPostTag.Input
   , viewBlogCategorySlot ::
       forall query. H.Slot query Void BlogPostCategory.Input
-  , viewLinks :: forall query. H.Slot query Void Unit
-  , viewLinkCategory :: forall query. H.Slot query Void String
-  -- TODO: shall we have a single slot for all Admin routes w/ an BaseAdmin component?
-  , viewAdminLoginSlot :: forall query. H.Slot query Void (Maybe String)
-  , viewAdminDashboardSlot :: forall query. H.Slot query Void Unit
-  , viewAdminBlogPostListSlot :: forall query. H.Slot query Void Unit
-  , viewAdminBlogPostEditSlot :: forall query. H.Slot query Void Int
-  , viewAdminBlogPostCreateSlot :: forall query. H.Slot query Void Unit
-  , viewAdminMediaListSlot :: forall query. H.Slot query Void (Array String)
+  , viewLinksSlot :: forall query. H.Slot query Void Unit
+  , viewLinkCategorySlot :: forall query. H.Slot query Void String
+  , viewAdminSlot :: forall query. H.Slot query Void AdminRoute
   )
 
 _homePage :: Proxy "homePageSlot"
@@ -108,29 +97,14 @@ _viewBlogPostTag = Proxy
 _viewBlogPostCategory :: Proxy "viewBlogCategorySlot"
 _viewBlogPostCategory = Proxy
 
-_viewLinks :: Proxy "viewLinks"
+_viewLinks :: Proxy "viewLinksSlot"
 _viewLinks = Proxy
 
-_viewLinkCategory :: Proxy "viewLinkCategory"
+_viewLinkCategory :: Proxy "viewLinkCategorySlot"
 _viewLinkCategory = Proxy
 
-_viewAdminLogin :: Proxy "viewAdminLoginSlot"
-_viewAdminLogin = Proxy
-
-_viewAdminDashboard :: Proxy "viewAdminDashboardSlot"
-_viewAdminDashboard = Proxy
-
-_viewAdminBlogPostList :: Proxy "viewAdminBlogPostListSlot"
-_viewAdminBlogPostList = Proxy
-
-_viewAdminBlogPostEdit :: Proxy "viewAdminBlogPostEditSlot"
-_viewAdminBlogPostEdit = Proxy
-
-_viewAdminBlogPostCreate :: Proxy "viewAdminBlogPostCreateSlot"
-_viewAdminBlogPostCreate = Proxy
-
-_viewAdminMediaList :: Proxy "viewAdminMediaListSlot"
-_viewAdminMediaList = Proxy
+_viewAdmin :: Proxy "viewAdminSlot"
+_viewAdmin = Proxy
 
 -- | The base app only cares about the current page & date, all other state is
 -- | stored within the various `Page.*` module componets.
@@ -197,7 +171,7 @@ render
 render { currentPage, currentDate } =
   case currentPage of
     Admin adminRoute ->
-      renderAdmin adminRoute
+      HH.slot_ _viewAdmin adminRoute BaseAdmin.component adminRoute
     _ ->
       HH.div [ HP.id "root" ]
         [ renderHeader currentPage
@@ -302,25 +276,3 @@ renderPage = pageWrapper <<< case _ of
   pageWrapper :: forall w i. HH.HTML w i -> HH.HTML w i
   pageWrapper content = HH.div [ HP.class_ $ H.ClassName "main" ]
     [ content ]
-
-renderAdmin
-  :: forall a m
-   . ApiRequest m
-  => Navigation m
-  => FileUpload m
-  => Auth m
-  => AdminRoute
-  -> H.ComponentHTML a Slots m
-renderAdmin = case _ of
-  Login mbRedirect ->
-    HH.slot_ _viewAdminLogin mbRedirect AdminLogin.page mbRedirect
-  Dashboard ->
-    HH.slot_ _viewAdminDashboard unit AdminDashboard.page unit
-  AdminBlogPostList ->
-    HH.slot_ _viewAdminBlogPostList unit AdminBlogPostList.page unit
-  AdminBlogPostEdit postId ->
-    HH.slot_ _viewAdminBlogPostEdit postId AdminBlogPostEdit.page postId
-  AdminBlogPostCreate ->
-    HH.slot_ _viewAdminBlogPostCreate unit AdminBlogPostCreate.page unit
-  AdminMediaList folders ->
-    HH.slot_ _viewAdminMediaList folders AdminMediaList.page folders

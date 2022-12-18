@@ -80,6 +80,7 @@ data AdminRoute
 
 derive instance genericAdminRoute :: Generic AdminRoute _
 derive instance eqAdminRoute :: Eq AdminRoute
+derive instance ordAdminRoute :: Ord AdminRoute
 instance showAdminRoute :: Show AdminRoute where
   show = genericShow
 
