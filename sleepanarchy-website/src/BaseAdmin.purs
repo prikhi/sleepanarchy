@@ -139,6 +139,7 @@ renderSidebar currentPage =
       Admin adminPage -> case Tuple adminPage currentPage of
         Tuple AdminBlogPostList (AdminBlogPostEdit _) -> true
         Tuple AdminBlogPostList (AdminBlogPostCreate) -> true
+        Tuple (AdminMediaList _) (AdminMediaList _) -> true
         _ -> false
       _ -> false
 
