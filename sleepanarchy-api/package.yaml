@@ -20,6 +20,8 @@ copyright:
     2022 Pavan Rikhi
 category:
     Web
+language:
+    GHC2021
 extra-source-files:
     - README.md
     - CHANGELOG.md
@@ -37,23 +39,21 @@ description: |
 ghc-options:
     - -Wall
     - -Wcompat
-    - -Wincomplete-record-updates
-    - -Wincomplete-uni-patterns
+    - -Wimplicit-lift
+    - -Wmissing-exported-signatures
+    - -Wredundant-bang-patterns
     - -Wredundant-constraints
+    - -Wunused-packages
+    - -Wunused-type-patterns
     - -O2
 
 default-extensions:
     - DataKinds
-    - DeriveGeneric
     - LambdaCase
     - MonoLocalBinds
     - MultiWayIf
-    - NamedFieldPuns
     - OverloadedStrings
     - QuasiQuotes
-    - TupleSections
-    - TypeApplications
-    - TypeOperators
     - ViewPatterns
 
 
@@ -86,7 +86,6 @@ library:
         - resource-pool
         - safe-exceptions
         - servant
-        - servant-auth
         - servant-auth-docs
         - servant-auth-server
         - servant-docs
@@ -144,7 +143,6 @@ tests:
             - sleepanarchy-api
             - aeson
             - bytestring
-            - directory
             - filepath
             - hedgehog
             - monad-logger
