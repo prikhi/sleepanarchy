@@ -79,7 +79,6 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
     * Migration script from old django DB to new DB
 * Blog Posts
     * Paginated list route?
-    * Cache sidebar data - bust/regen on post create/edit
     * Prev/Next links on details page
     * Serverside rendering of markdown -> html w/ syntax highlighting?
         * Doing syntax highlighting for _all_ languages add 1MB to the client

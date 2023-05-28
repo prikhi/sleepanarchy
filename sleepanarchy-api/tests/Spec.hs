@@ -37,8 +37,9 @@ import           Test.Tasty.HUnit
 import           Test.Tasty.Hedgehog
 
 import           App
+import           Caches
+import           Caches.Blog
 import           Handlers.Admin
-import           Handlers.BlogPosts
 import           Handlers.Links
 import           Models.DB
 import           Models.Utils                   ( slugify )
@@ -122,14 +123,14 @@ listMediaDirectoryTests = testGroup
                   , DirectoryNode . InMemoryDirectory $ HM.fromList
                       [ ("f1"    , FileNode "file one")
                       , ("f2.png", FileNode "file two")
-                      , ("dir3"  , DirectoryNode $ InMemoryDirectory HM.empty)
+                      , ("dir3"  , DirectoryNode emptyDirectory)
                       ]
                   )
                 ]
-        (finalMedia, result) <- customTestRunner media
+        result <- customTestRunner media
             $ listMediaDirectory (P.toSqlKey 9001) ["dir2"]
-        finalMedia @?= media
-        result @?= Right AdminMediaList
+        ctrMediaFS result @?= media
+        ctrResult result @?= Right AdminMediaList
             { amlBasePath = "/dir2/"
             , amlContents = [ AdminMediaItem "dir3"   Directory
                             , AdminMediaItem "f1"     Other
@@ -192,26 +193,25 @@ createMediaDirectoryTests = testGroup
         first errHTTPCode result @?= Left 403
     , testCase "Throws a 422 if the directory path is a file" $ do
         let media = InMemoryDirectory $ HM.fromList [("test", FileNode "")]
-        (finalMedia, result) <- customTestRunner media $ do
+        result <- customTestRunner media $ do
             uid <- P.entityKey <$> runDB makeUser
             createMediaDirectory uid ["test"]
-        first errHTTPCode result @?= Left 422
-        finalMedia @?= media
+        first errHTTPCode (ctrResult result) @?= Left 422
+        ctrMediaFS result @?= media
     , testCase "Does not error if the directory already exists" $ do
-        let media = InMemoryDirectory $ HM.fromList
-                [("testDir", DirectoryNode $ InMemoryDirectory HM.empty)]
-        (finalMedia, result) <- customTestRunner media $ do
+        let media = InMemoryDirectory
+                $ HM.fromList [("testDir", DirectoryNode emptyDirectory)]
+        result <- customTestRunner media $ do
             uid <- P.entityKey <$> runDB makeUser
             createMediaDirectory uid ["testDir"]
-        result `satisfies` isRight
-        finalMedia @?= media
+        ctrResult result `satisfies` isRight
+        ctrMediaFS result @?= media
     , testCase "Creates directories with arbitrary nesting" $ do
-        (finalMedia, result) <-
-            customTestRunner (InMemoryDirectory HM.empty) $ do
-                uid <- P.entityKey <$> runDB makeUser
-                createMediaDirectory uid ["nested/in", "list-and-string"]
-        result `satisfies` isRight
-        finalMedia @?= InMemoryDirectory
+        result <- customTestRunner emptyDirectory $ do
+            uid <- P.entityKey <$> runDB makeUser
+            createMediaDirectory uid ["nested/in", "list-and-string"]
+        ctrResult result `satisfies` isRight
+        ctrMediaFS result @?= InMemoryDirectory
             (HM.fromList
                 [ ( "nested"
                   , DirectoryNode . InMemoryDirectory $ HM.fromList
@@ -219,7 +219,7 @@ createMediaDirectoryTests = testGroup
                         , DirectoryNode $ InMemoryDirectory
                             (HM.fromList
                                 [ ( "list-and-string"
-                                  , DirectoryNode $ InMemoryDirectory HM.empty
+                                  , DirectoryNode emptyDirectory
                                   )
                                 ]
                             )
@@ -246,18 +246,18 @@ uploadMediaFileTests = testGroup
         let media = InMemoryDirectory $ HM.fromList
                 [ ( "nested"
                   , DirectoryNode . InMemoryDirectory $ HM.fromList
-                      [("path", DirectoryNode $ InMemoryDirectory HM.empty)]
+                      [("path", DirectoryNode emptyDirectory)]
                   )
                 ]
-        (finalMedia, result) <- customTestRunner media $ do
+        result <- customTestRunner media $ do
             uid <- runDB $ P.entityKey <$> makeUser
             uploadMediaFile uid $ MediaUpload
                 { muPath = ["nested", "path"]
                 , muName = "some-file.gif"
                 , muData = Base64Text "some-binary-text"
                 }
-        result `satisfies` isRight
-        finalMedia @?= InMemoryDirectory
+        ctrResult result `satisfies` isRight
+        ctrMediaFS result @?= InMemoryDirectory
             (HM.fromList
                 [ ( "nested"
                   , DirectoryNode . InMemoryDirectory $ HM.fromList
@@ -272,15 +272,15 @@ uploadMediaFileTests = testGroup
     , testCase "Does not override existing files" $ do
         let media = InMemoryDirectory
                 $ HM.fromList [("test-file.txt", FileNode "contents")]
-        (finalMedia, result) <- customTestRunner media $ do
+        result <- customTestRunner media $ do
             uid <- runDB $ P.entityKey <$> makeUser
             uploadMediaFile uid $ MediaUpload
                 { muPath = []
                 , muName = "test-file.txt"
                 , muData = Base64Text "different stuff"
                 }
-        result `satisfies` isRight
-        finalMedia @?= InMemoryDirectory
+        ctrResult result `satisfies` isRight
+        ctrMediaFS result @?= InMemoryDirectory
             (HM.fromList
                 [ ("test-file.txt"    , FileNode "contents")
                 , ("test-file-001.txt", FileNode "different stuff")
@@ -421,6 +421,31 @@ updateBlogPostTests = testGroup
                                   emptyUpdate { abpuPublished = Just False }
             runDB $ P.get pid
         fmap blogPostPublishedAt <$> result @?= Right (Just Nothing)
+    , testCase "Updates the Sidebar Cache" $ do
+        result <- customTestRunner emptyDirectory $ do
+            now        <- liftIO getCurrentTime
+            (uid, pid) <- runDB $ do
+                uid <- P.entityKey <$> makeUser
+                cid <- P.entityKey <$> makeBlogCategory "category"
+                (uid, ) . P.entityKey <$> makeBlogPost "title"
+                                                       ""
+                                                       uid
+                                                       cid
+                                                       (Just now)
+            bustBlogSidebarCache
+            initialCache <- getBlogSidebarCache
+            void $ updateBlogPost
+                uid
+                pid
+                emptyUpdate { abpuTitle = Just "New Title" }
+            return initialCache
+        ctrResult result `satisfies` isRight
+        let initialCache = fromRight (error "checked") $ ctrResult result
+        (cBlogSidebarData $ ctrCaches result, initialCache)
+            `satisfies` uncurry (/=)
+        map brpdTitle (bsdRecent initialCache) @?= ["title"]
+        map brpdTitle (bsdRecent $ cBlogSidebarData $ ctrCaches result)
+            @?= ["New Title"]
     ]
   where
     emptyUpdate :: AdminBlogPostUpdate
@@ -620,6 +645,29 @@ createBlogPostTests = testGroup
             runDB $ (,) <$> P.get pid <*> P.count @_ @_ @BlogPost []
         snd <$> result @?= Right 1
         (blogPostPublishedAt <=< fst) <$> result @?= Right Nothing
+    , testCase "Updates the Sidebar Cache" $ do
+        result <- customTestRunner emptyDirectory $ do
+            initialCache                             <- getBlogSidebarCache
+            (P.entityKey -> uid, P.entityKey -> cid) <-
+                runDB $ (,) <$> makeUser <*> makeBlogCategory "category"
+            void $ createBlogPost
+                uid
+                NewBlogPost { nbpTitle       = "The Title"
+                            , nbpSlug        = Just "the-title"
+                            , nbpDescription = Just "short text"
+                            , nbpContent     = "Post's full content"
+                            , nbpTags        = "t1, t2"
+                            , nbpPublish     = True
+                            , nbpCategoryId  = cid
+                            }
+            return initialCache
+        ctrResult result `satisfies` isRight
+        let initialCache = fromRight (error "checked") $ ctrResult result
+        (cBlogSidebarData $ ctrCaches result, initialCache)
+            `satisfies` uncurry (/=)
+        map brpdTitle (bsdRecent initialCache) @?= []
+        map brpdTitle (bsdRecent $ cBlogSidebarData $ ctrCaches result)
+            @?= ["The Title"]
     , testCase "Can publish the new post when creating" $ do
         result <- testRunner $ do
             (P.entityKey -> uid, P.entityKey -> cid) <-
@@ -703,23 +751,25 @@ getAllLinksTests = testGroup
         result @?= Right
             (RootLinkCategories
                 [ LinkCategoryMap
-                      { lcmCategory    = "root"
-                      , lcmSlug        = "root"
-                      , lcmChildren    =
-                          [ LinkCategoryMap
-                                { lcmCategory    = "child"
-                                , lcmSlug        = "child"
-                                , lcmChildren    = []
-                                , lcmLinks       = [ LinkDetails
-                                                         { ldTitle = "some link"
-                                                         , ldSlug = "some-link"
-                                                         , ldDescription = ""
-                                                         , ldViews = 0
-                                                         }
-                                                   ]
-                                }
-                          ]
-                      , lcmLinks       = []
+                      { lcmCategory = "root"
+                      , lcmSlug     = "root"
+                      , lcmChildren = [ LinkCategoryMap
+                                            { lcmCategory = "child"
+                                            , lcmSlug     = "child"
+                                            , lcmChildren = []
+                                            , lcmLinks    = [ LinkDetails
+                                                                  { ldTitle =
+                                                                      "some link"
+                                                                  , ldSlug =
+                                                                      "some-link"
+                                                                  , ldDescription =
+                                                                      ""
+                                                                  , ldViews = 0
+                                                                  }
+                                                            ]
+                                            }
+                                      ]
+                      , lcmLinks    = []
                       }
                 ]
             )
@@ -789,32 +839,32 @@ getLinkCategoryTests = testGroup
         result `satisfies` isRight
         let lcMap = fromRight (error "checked") result
         lcMap @?= LinkCategoryMap
-            { lcmCategory    = "root1"
-            , lcmSlug        = "root1"
-            , lcmChildren    =
+            { lcmCategory = "root1"
+            , lcmSlug     = "root1"
+            , lcmChildren =
                 [ LinkCategoryMap
-                      { lcmCategory    = "c1"
-                      , lcmSlug        = "c1"
-                      , lcmChildren    = []
-                      , lcmLinks       = [ LinkDetails { ldTitle       = "c1l1"
-                                                       , ldSlug        = "c1l1"
-                                                       , ldDescription = ""
-                                                       , ldViews       = 0
-                                                       }
-                                         , LinkDetails { ldTitle       = "c1l2"
-                                                       , ldSlug        = "c1l2"
-                                                       , ldDescription = ""
-                                                       , ldViews       = 0
-                                                       }
-                                         ]
+                      { lcmCategory = "c1"
+                      , lcmSlug     = "c1"
+                      , lcmChildren = []
+                      , lcmLinks    = [ LinkDetails { ldTitle       = "c1l1"
+                                                    , ldSlug        = "c1l1"
+                                                    , ldDescription = ""
+                                                    , ldViews       = 0
+                                                    }
+                                      , LinkDetails { ldTitle       = "c1l2"
+                                                    , ldSlug        = "c1l2"
+                                                    , ldDescription = ""
+                                                    , ldViews       = 0
+                                                    }
+                                      ]
                       }
                 ]
-            , lcmLinks       = [ LinkDetails { ldTitle       = "r1l1"
-                                             , ldSlug        = "r1l1"
-                                             , ldDescription = ""
-                                             , ldViews       = 0
-                                             }
-                               ]
+            , lcmLinks    = [ LinkDetails { ldTitle       = "r1l1"
+                                          , ldSlug        = "r1l1"
+                                          , ldDescription = ""
+                                          , ldViews       = 0
+                                          }
+                            ]
             }
     , testCase "Returns the correct sub-LinkCategoryMap" $ do
         result <- testRunner $ do
@@ -832,32 +882,32 @@ getLinkCategoryTests = testGroup
         result `satisfies` isRight
         let lcMap = fromRight (error "checked") result
         lcMap @?= LinkCategoryMap
-            { lcmCategory    = "c1"
-            , lcmSlug        = "c1"
-            , lcmChildren    =
-                [ LinkCategoryMap
-                      { lcmCategory    = "c1c1"
-                      , lcmSlug        = "c1c1"
-                      , lcmChildren    = []
-                      , lcmLinks       = [ LinkDetails { ldTitle = "c1c1l1"
-                                                       , ldSlug = "c1c1l1"
-                                                       , ldDescription = ""
-                                                       , ldViews = 0
-                                                       }
-                                         ]
-                      }
-                ]
-            , lcmLinks       = [ LinkDetails { ldTitle       = "c1l1"
-                                             , ldSlug        = "c1l1"
-                                             , ldDescription = ""
-                                             , ldViews       = 0
-                                             }
-                               , LinkDetails { ldTitle       = "c1l2"
-                                             , ldSlug        = "c1l2"
-                                             , ldDescription = ""
-                                             , ldViews       = 0
-                                             }
-                               ]
+            { lcmCategory = "c1"
+            , lcmSlug     = "c1"
+            , lcmChildren = [ LinkCategoryMap
+                                  { lcmCategory = "c1c1"
+                                  , lcmSlug     = "c1c1"
+                                  , lcmChildren = []
+                                  , lcmLinks    = [ LinkDetails
+                                                        { ldTitle = "c1c1l1"
+                                                        , ldSlug = "c1c1l1"
+                                                        , ldDescription = ""
+                                                        , ldViews = 0
+                                                        }
+                                                  ]
+                                  }
+                            ]
+            , lcmLinks    = [ LinkDetails { ldTitle       = "c1l1"
+                                          , ldSlug        = "c1l1"
+                                          , ldDescription = ""
+                                          , ldViews       = 0
+                                          }
+                            , LinkDetails { ldTitle       = "c1l2"
+                                          , ldSlug        = "c1l2"
+                                          , ldDescription = ""
+                                          , ldViews       = 0
+                                          }
+                            ]
             }
     ]
 

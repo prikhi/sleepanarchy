@@ -48,7 +48,8 @@ import           System.FilePath                ( addTrailingPathSeparator
                                                 , splitExtension
                                                 )
 
-import           App                            ( DB(..)
+import           App                            ( Cache(..)
+                                                , DB(..)
                                                 , DBThrows(..)
                                                 , Media(..)
                                                 , ThrowsError(..)
@@ -483,34 +484,38 @@ instance ToSample AdminBlogPostUpdate where
         ]
 
 updateBlogPost
-    :: DBThrows m => UserId -> BlogPostId -> AdminBlogPostUpdate -> m NoContent
-updateBlogPost _ pId AdminBlogPostUpdate {..} = runDBThrow $ do
-    now        <- liftIO getCurrentTime
-    post       <- P.get pId >>= maybe (throwM err404) return
-    slugUpdate <- forM abpuSlug $ \newSlug -> if T.null newSlug
-        then case abpuTitle of
-            Just newTitle -> return $ slugify newTitle
-            Nothing       -> do
-                return $ slugify $ blogPostTitle post
-        else return newSlug
-    let publishUpdate = abpuPublished >>= \shouldPublish ->
-            case (blogPostPublishedAt post, shouldPublish) of
-                (Nothing, True ) -> Just $ Just now
-                (Just _ , False) -> Just Nothing
-                (Nothing, False) -> Nothing
-                (Just _ , True ) -> Nothing
-    let updates = catMaybes
-            [ (BlogPostTitle P.=.) <$> abpuTitle
-            , (BlogPostSlug P.=.) <$> slugUpdate
-            , (BlogPostContent P.=.) <$> abpuContent
-            , (BlogPostDescription P.=.) <$> abpuDescription
-            , (BlogPostTags P.=.) <$> abpuTags
-            , (BlogPostPublishedAt P.=.) <$> publishUpdate
-            ]
-    unless (null updates)
-        $ P.update pId
-        $ (BlogPostUpdatedAt P.=. now)
-        : updates
+    :: (DBThrows m, Cache m, Monad m)
+    => UserId
+    -> BlogPostId
+    -> AdminBlogPostUpdate
+    -> m NoContent
+updateBlogPost _ pId AdminBlogPostUpdate {..} = do
+    runDBThrow $ do
+        now        <- liftIO getCurrentTime
+        post       <- P.get pId >>= maybe (throwM err404) return
+        slugUpdate <- forM abpuSlug $ \newSlug -> if T.null newSlug
+            then case abpuTitle of
+                Just newTitle -> return $ slugify newTitle
+                Nothing       -> do
+                    return $ slugify $ blogPostTitle post
+            else return newSlug
+        let publishUpdate = abpuPublished >>= \shouldPublish ->
+                case (blogPostPublishedAt post, shouldPublish) of
+                    (Nothing, True ) -> Just $ Just now
+                    (Just _ , False) -> Just Nothing
+                    (Nothing, False) -> Nothing
+                    (Just _ , True ) -> Nothing
+        let updates = catMaybes
+                [ (BlogPostTitle P.=.) <$> abpuTitle
+                , (BlogPostSlug P.=.) <$> slugUpdate
+                , (BlogPostContent P.=.) <$> abpuContent
+                , (BlogPostDescription P.=.) <$> abpuDescription
+                , (BlogPostTags P.=.) <$> abpuTags
+                , (BlogPostPublishedAt P.=.) <$> publishUpdate
+                ]
+        unless (null updates) $ do
+            P.update pId $ (BlogPostUpdatedAt P.=. now) : updates
+    bustBlogSidebarCache
     return NoContent
 
 
@@ -564,7 +569,8 @@ instance ToSample NewBlogPost where
 -- _paragraph_ of the content instead of the first line? Should we render
 -- the content field's markdown into HTML & take the first paragraph from
 -- that? Seems simpler to just require a non-empty Description field...
-createBlogPost :: (MonadIO m, DB m) => UserId -> NewBlogPost -> m BlogPostId
+createBlogPost
+    :: (MonadIO m, DB m, Cache m) => UserId -> NewBlogPost -> m BlogPostId
 createBlogPost uid NewBlogPost {..} = do
     let slug        = fromMaybe (slugify nbpTitle) nbpSlug
         description = fromMaybe (mkDescription nbpContent) nbpDescription
@@ -581,9 +587,11 @@ createBlogPost uid NewBlogPost {..} = do
             , blogPostAuthorId    = uid
             , blogPostCategoryId  = nbpCategoryId
             }
-    runDB $ do
+    postId <- runDB $ do
         result <- insertUnique newPost
         maybe (incrementSlugAndInsert newPost 1) return result
+    bustBlogSidebarCache
+    return postId
   where
     mkDescription :: Text -> Text
     mkDescription content = fromMaybe content . listToMaybe $ T.lines content

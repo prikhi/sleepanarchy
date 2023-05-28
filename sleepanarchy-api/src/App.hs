@@ -23,8 +23,18 @@ module App
     , MediaSubPath
     , fromMediaSubPath
     , foldersToSubPath
+    -- * Cache
+    , HasCachesTVar(..)
+    , HasCachesTVarM(..)
+    , Cache(..)
     ) where
 
+import           Control.Concurrent.STM         ( TVar
+                                                , atomically
+                                                , modifyTVar
+                                                , newTVarIO
+                                                , readTVarIO
+                                                )
 import           Control.Exception.Safe         ( MonadCatch
                                                 , MonadThrow
                                                 , try
@@ -89,6 +99,11 @@ import           System.IO                      ( hPutStrLn
                                                 )
 import           Text.Read                      ( readMaybe )
 
+import           Caches                         ( BlogSidebarData
+                                                , Caches(..)
+                                                , getBlogSidebarData
+                                                , initializeCache
+                                                )
 import           Models.DB                      ( migrateAll )
 
 import qualified Data.ByteString               as BS
@@ -108,6 +123,7 @@ data Config = Config
     , cfgJwk               :: JWK
     , cfgCookieSettings    :: CookieSettings
     , cfgMediaDirectory    :: FilePath
+    , cfgCaches            :: TVar Caches
     , cfgLoggingMiddleware :: Application -> Application
     }
 
@@ -122,7 +138,7 @@ mkConfig = do
             runStdoutLoggingT $ createPostgresqlPool dbConnectionString 2
         Production ->
             runNoLoggingT $ createPostgresqlPool dbConnectionString 20
-    flip runSqlPool cfgDbPool $ do
+    cfgCaches <- flip runSqlPool cfgDbPool $ do
         migrationsDue <- showMigration migrateAll
         unless (null migrationsDue) $ liftIO $ do
             putStrLn "Cannot start server due to unmigrated database:"
@@ -130,6 +146,7 @@ mkConfig = do
             putStrLn "Create a migration with `sql-migrate new`."
             putStrLn "Run a migration with `sql-migrate up`, then try again."
             exitFailure
+        initializeCache >>= liftIO . newTVarIO
     cfgJwk <- lookupEnv "API_JWK" >>= \case
         Nothing -> do
             hPutStrLn
@@ -315,3 +332,32 @@ foldersToSubPath =
         . joinPath
         . filter (`notElem` ["..", "../"])
         . concatMap splitPath
+
+
+-- | Knows of the global 'Caches' 'TVar'.
+class HasCachesTVar a where
+    -- | Get the thread-safe cache.
+    getCaches :: a -> TVar Caches
+
+instance HasCachesTVar Config where
+    getCaches = cfgCaches
+
+class HasCachesTVarM m where
+    getCachesM :: m (TVar Caches)
+
+instance (HasCachesTVar a, MonadReader a m) => HasCachesTVarM m where
+    getCachesM = asks getCaches
+
+class Cache m where
+    getBlogSidebarCache :: m BlogSidebarData
+    bustBlogSidebarCache :: m ()
+
+instance (HasCachesTVarM m, MonadIO m, DB m) => Cache m where
+    getBlogSidebarCache = do
+        tCache <- getCachesM
+        fmap cBlogSidebarData . liftIO $ readTVarIO tCache
+    bustBlogSidebarCache = do
+        tCache <- getCachesM
+        bsd    <- runDB getBlogSidebarData
+        liftIO . atomically . modifyTVar tCache $ \c ->
+            c { cBlogSidebarData = bsd }

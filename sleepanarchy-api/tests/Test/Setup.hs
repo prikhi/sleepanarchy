@@ -1,4 +1,7 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RecordWildCards #-}
 module Test.Setup where
 
 import           Control.Arrow                  ( (&&&) )
@@ -13,7 +16,6 @@ import           Control.Exception.Safe         ( MonadCatch
                                                 )
 import           Control.Monad                  ( forM_
                                                 , join
-                                                , void
                                                 )
 import           Control.Monad.Except           ( ExceptT
                                                 , MonadError
@@ -56,10 +58,14 @@ import           System.FilePath                ( dropTrailingPathSeparator
                                                 , splitPath
                                                 )
 
-import           App                            ( Media(..)
+import           App                            ( HasCachesTVarM(..)
+                                                , Media(..)
                                                 , ThrowsError(..)
                                                 , foldersToSubPath
                                                 , fromMediaSubPath
+                                                )
+import           Caches                         ( Caches
+                                                , initializeCache
                                                 )
 import           Models.DB                      ( migrateAll
                                                 , tableDefs
@@ -73,11 +79,14 @@ import qualified Data.List                     as L
 -- | Monad that tests can run under.
 newtype TestM a
     = TestM
-        { runTestM :: ReaderT (Pool SqlBackend) (ReaderT (TVar InMemoryDirectory) (ExceptT ServerError IO)) a
-        } deriving (Functor, Applicative, Monad, MonadIO, MonadReader (Pool SqlBackend), MonadError ServerError, MonadThrow, MonadCatch)
+        { runTestM :: ReaderT (Pool SqlBackend) (ReaderT (TVar InMemoryDirectory) (ReaderT (TVar Caches) (ExceptT ServerError IO))) a
+        } deriving (Functor, Applicative, Monad, MonadIO, MonadReader (Pool SqlBackend),  MonadError ServerError, MonadThrow, MonadCatch)
 
 instance ThrowsError TestM where
     serverError = throwError
+
+instance {-# OVERLAPPING #-} HasCachesTVarM TestM where
+    getCachesM = TestM . lift $ lift ask
 
 -- | Evaluate a test action into IO.
 --
@@ -85,14 +94,11 @@ instance ThrowsError TestM where
 -- migration to recreate the dropped tables, & then evaluates the given
 -- TestM action.
 testRunner :: TestM a -> IO (Either ServerError a)
-testRunner = fmap snd . customTestRunner (InMemoryDirectory HM.empty)
+testRunner = fmap ctrResult . customTestRunner (InMemoryDirectory HM.empty)
 
 -- | 'testRunner', but allows you to pass in some custom data such as
 -- a non-empty Media filesystem & returns the final filesystem.
-customTestRunner
-    :: InMemoryDirectory
-    -> TestM a
-    -> IO (InMemoryDirectory, Either ServerError a)
+customTestRunner :: InMemoryDirectory -> TestM a -> IO (CustomTestResult a)
 customTestRunner mediaFS action = do
     dbPassword <- maybe "" ((" password=" <>) . BC.pack) <$> lookupEnv "DB_PASS"
     pool       <- runNoLoggingT $ createPostgresqlPool
@@ -101,15 +107,33 @@ customTestRunner mediaFS action = do
         )
         1
     mediaFileSystem <- newTVarIO mediaFS
-    void $ runSqlPool (dropAllTables >> runMigrationQuiet migrateAll) pool
-    result <- runExceptT
-        $ runReaderT (runReaderT (runTestM action) pool) mediaFileSystem
-    finalMediaFileSystem <- readTVarIO mediaFileSystem
-    return (finalMediaFileSystem, result)
+    cache           <-
+        flip runSqlPool pool
+        $   dropAllTables
+        >>  runMigrationQuiet migrateAll
+        >>  initializeCache
+        >>= liftIO
+        .   newTVarIO
+    ctrResult <- runExceptT $ runReaderT
+        (runReaderT (runReaderT (runTestM action) pool) mediaFileSystem)
+        cache
+    ctrMediaFS <- readTVarIO mediaFileSystem
+    ctrCaches  <- readTVarIO cache
+    return CustomTestResult { .. }
+
+data CustomTestResult a = CustomTestResult
+    { ctrMediaFS :: InMemoryDirectory
+    , ctrCaches  :: Caches
+    , ctrResult  :: Either ServerError a
+    }
+    deriving (Show, Read, Eq)
 
 newtype InMemoryDirectory
     = InMemoryDirectory (HM.HashMap FileName FSNode)
     deriving (Show, Read, Eq, Ord)
+
+emptyDirectory :: InMemoryDirectory
+emptyDirectory = InMemoryDirectory HM.empty
 
 type FileName = String
 data FSNode

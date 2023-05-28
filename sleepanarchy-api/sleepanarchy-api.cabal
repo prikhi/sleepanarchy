@@ -32,6 +32,8 @@ library
       Api
       Api.Routes
       App
+      Caches
+      Caches.Blog
       Handlers.Admin
       Handlers.BlogPosts
       Handlers.Links
@@ -89,6 +91,7 @@ library
     , servant-docs
     , servant-server
     , sitemap-gen
+    , stm
     , text
     , time
     , wai-extra
