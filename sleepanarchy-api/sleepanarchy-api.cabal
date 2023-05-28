@@ -1,6 +1,6 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.35.0.
+-- This file has been generated from package.yaml by hpack version 0.35.1.
 --
 -- see: https://github.com/sol/hpack
 
@@ -50,18 +50,13 @@ library
       src
   default-extensions:
       DataKinds
-      DeriveGeneric
       LambdaCase
       MonoLocalBinds
       MultiWayIf
-      NamedFieldPuns
       OverloadedStrings
       QuasiQuotes
-      TupleSections
-      TypeApplications
-      TypeOperators
       ViewPatterns
-  ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -O2
+  ghc-options: -Wall -Wcompat -Wimplicit-lift -Wmissing-exported-signatures -Wredundant-bang-patterns -Wredundant-constraints -Wunused-packages -Wunused-type-patterns -O2
   build-depends:
       aeson
     , base >=4.7 && <5
@@ -85,7 +80,6 @@ library
     , resource-pool
     , safe-exceptions
     , servant
-    , servant-auth
     , servant-auth-docs
     , servant-auth-server
     , servant-docs
@@ -95,7 +89,7 @@ library
     , text
     , time
     , wai-extra
-  default-language: Haskell2010
+  default-language: GHC2021
 
 executable sleepanarchy-api
   main-is: Main.hs
@@ -107,23 +101,18 @@ executable sleepanarchy-api
       app
   default-extensions:
       DataKinds
-      DeriveGeneric
       LambdaCase
       MonoLocalBinds
       MultiWayIf
-      NamedFieldPuns
       OverloadedStrings
       QuasiQuotes
-      TupleSections
-      TypeApplications
-      TypeOperators
       ViewPatterns
-  ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -O2 -threaded -rtsopts -with-rtsopts "-N -T"
+  ghc-options: -Wall -Wcompat -Wimplicit-lift -Wmissing-exported-signatures -Wredundant-bang-patterns -Wredundant-constraints -Wunused-packages -Wunused-type-patterns -O2 -threaded -rtsopts -with-rtsopts "-N -T"
   build-depends:
       base >=4.7 && <5
     , sleepanarchy-api
     , warp
-  default-language: Haskell2010
+  default-language: GHC2021
 
 executable sleepanarchy-api-management
   main-is: Main.hs
@@ -135,18 +124,13 @@ executable sleepanarchy-api-management
       management
   default-extensions:
       DataKinds
-      DeriveGeneric
       LambdaCase
       MonoLocalBinds
       MultiWayIf
-      NamedFieldPuns
       OverloadedStrings
       QuasiQuotes
-      TupleSections
-      TypeApplications
-      TypeOperators
       ViewPatterns
-  ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -O2 -threaded -rtsopts -with-rtsopts "-N -T"
+  ghc-options: -Wall -Wcompat -Wimplicit-lift -Wmissing-exported-signatures -Wredundant-bang-patterns -Wredundant-constraints -Wunused-packages -Wunused-type-patterns -O2 -threaded -rtsopts -with-rtsopts "-N -T"
   build-depends:
       aeson
     , base >=4.7 && <5
@@ -158,7 +142,7 @@ executable sleepanarchy-api-management
     , servant-auth-server
     , sleepanarchy-api
     , text
-  default-language: Haskell2010
+  default-language: GHC2021
 
 test-suite sleepanarchy-api-test
   type: exitcode-stdio-1.0
@@ -172,23 +156,17 @@ test-suite sleepanarchy-api-test
       tests
   default-extensions:
       DataKinds
-      DeriveGeneric
       LambdaCase
       MonoLocalBinds
       MultiWayIf
-      NamedFieldPuns
       OverloadedStrings
       QuasiQuotes
-      TupleSections
-      TypeApplications
-      TypeOperators
       ViewPatterns
-  ghc-options: -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints -O2 -threaded -rtsopts -with-rtsopts "-N -T"
+  ghc-options: -Wall -Wcompat -Wimplicit-lift -Wmissing-exported-signatures -Wredundant-bang-patterns -Wredundant-constraints -Wunused-packages -Wunused-type-patterns -O2 -threaded -rtsopts -with-rtsopts "-N -T"
   build-depends:
       aeson
     , base >=4.7 && <5
     , bytestring
-    , directory
     , filepath
     , hedgehog
     , monad-logger
@@ -206,4 +184,4 @@ test-suite sleepanarchy-api-test
     , text
     , time
     , unordered-containers
-  default-language: Haskell2010
+  default-language: GHC2021
