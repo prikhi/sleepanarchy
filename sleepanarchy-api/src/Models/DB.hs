@@ -8,28 +8,28 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+
 module Models.DB where
 
-import           Data.Text                      ( Text )
-import           Data.Time                      ( UTCTime )
-import           Database.Persist               ( ToBackendKey(..) )
-import           Database.Persist.TH            ( mkEntityDefList
-                                                , mkMigrate
-                                                , mkPersist
-                                                , persistLowerCase
-                                                , share
-                                                , sqlSettings
-                                                )
-import           GHC.Generics                   ( Generic )
-import           Servant.Auth.Server            ( FromJWT
-                                                , ToJWT
-                                                )
-import           Servant.Docs                   ( ToSample(..)
-                                                , singleSample
-                                                )
+import Data.Text (Text)
+import Data.Time (UTCTime)
+import Database.Persist (ToBackendKey (..))
+import Database.Persist.TH
+    ( mkEntityDefList
+    , mkMigrate
+    , mkPersist
+    , persistLowerCase
+    , share
+    , sqlSettings
+    )
+import GHC.Generics (Generic)
+import Servant.Auth.Server (FromJWT, ToJWT)
+import Servant.Docs (ToSample (..), singleSample)
 
 
-share [mkPersist sqlSettings, mkEntityDefList "tableDefs", mkMigrate "migrateAll"] [persistLowerCase|
+share
+    [mkPersist sqlSettings, mkEntityDefList "tableDefs", mkMigrate "migrateAll"]
+    [persistLowerCase|
 
 User
     name Text
@@ -89,6 +89,7 @@ LinkCategory
 
 instance ToJWT UserId
 instance FromJWT UserId
+
 
 instance ToSample BlogPostId where
     toSamples _ = singleSample $ fromBackendKey 9001

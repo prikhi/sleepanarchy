@@ -1,9 +1,10 @@
 module Main where
 
-import           Network.Wai.Handler.Warp
+import Network.Wai.Handler.Warp
 
-import           Api
-import           App
+import Api
+import App
+
 
 main :: IO ()
 main = do

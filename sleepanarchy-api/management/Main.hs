@@ -1,40 +1,36 @@
 module Main where
 
-import           Control.Exception.Safe         ( try )
-import           Control.Monad.Reader           ( liftIO
-                                                , runReaderT
-                                                )
-import           Data.Aeson                     ( encode )
-import           Data.Password.Argon2           ( Password
-                                                , PasswordHash(..)
-                                                , hashPassword
-                                                , mkPassword
-                                                )
-import           Database.Persist.Sql           ( BackendKey(..)
-                                                , insert
-                                                )
-import           Database.PostgreSQL.Simple     ( SqlError )
-import           Servant.Auth.Server            ( generateKey )
-import           System.Environment             ( getArgs )
-import           System.Exit                    ( exitFailure )
-import           System.IO                      ( hPutStrLn
-                                                , stderr
-                                                )
+import Control.Exception.Safe (try)
+import Control.Monad.Reader (liftIO, runReaderT)
+import Data.Aeson (encode)
+import Data.Password.Argon2
+    ( Password
+    , PasswordHash (..)
+    , hashPassword
+    , mkPassword
+    )
+import Database.Persist.Sql (BackendKey (..), insert)
+import Database.PostgreSQL.Simple (SqlError)
+import Servant.Auth.Server (generateKey)
+import System.Environment (getArgs)
+import System.Exit (exitFailure)
+import System.IO (hPutStrLn, stderr)
 
-import           App
-import           Models.DB
+import App
+import Models.DB
 
-import qualified Data.Text                     as T
-                                                ( pack )
+import Data.Text qualified as T (pack)
 
 
 main :: IO ()
-main = getArgs >>= \case
-    ["create-user", name, password] ->
-        createUser name (mkPassword $ T.pack password)
-    ["generate-jwk"] -> generateJWK
-    _ ->
-        mapM_
+main =
+    getArgs >>= \case
+        ["create-user", name, password] ->
+            createUser name (mkPassword $ T.pack password)
+        ["generate-jwk"] ->
+            generateJWK
+        _ ->
+            mapM_
                 (hPutStrLn stderr)
                 [ "sleepanarchy-api-management: Helper Commands for Managing the Sleepanarchy.com API"
                 , ""
@@ -42,25 +38,30 @@ main = getArgs >>= \case
                 , "generate-jwk                             Create a JWK for token signing."
                 , ""
                 ]
-            >> exitFailure
+                >> exitFailure
+
 
 createUser :: String -> Password -> IO ()
 createUser name password = do
     (PasswordHash hashedPass) <- hashPassword password
-    cfg                       <- mkConfig
+    cfg <- mkConfig
     flip runReaderT cfg $ do
-        mbUserId <- try @_ @SqlError . runDB . insert $ User (T.pack name)
-                                                             hashedPass
+        mbUserId <-
+            try @_ @SqlError . runDB . insert $
+                User
+                    (T.pack name)
+                    hashedPass
         liftIO $ case mbUserId of
             Right userId ->
-                putStrLn
-                    $  "Successfully inserted user '"
-                    <> name
-                    <> "' with ID #"
-                    <> show (unSqlBackendKey (unUserKey userId))
+                putStrLn $
+                    "Successfully inserted user '"
+                        <> name
+                        <> "' with ID #"
+                        <> show (unSqlBackendKey (unUserKey userId))
             Left _ -> do
                 putStrLn $ "Could not insert user, name is taken: " <> name
                 exitFailure
+
 
 generateJWK :: IO ()
 generateJWK = do
