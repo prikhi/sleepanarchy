@@ -4,18 +4,19 @@ module Pages.BlogPostTag (page, Input) where
 
 import Prelude
 
-import Api (class ApiRequest, ApiError, blogPostTagRequest, renderApiError)
+import Api (class ApiRequest, ApiError, blogPostTagRequest)
 import Api.Types (BlogPostList)
 import App (class Navigation, newUrl)
 import Data.Array (mapMaybe)
 import Data.Array as Array
-import Data.Either (Either(..), hush)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String as String
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import Network.RemoteData (RemoteData(..), toMaybe)
 import Router (Route)
+import Utils (renderRemoteData)
 import Views.Blog (renderBlogPostList, renderBlogSidebar)
 import Web.UIEvent.MouseEvent as ME
 
@@ -31,11 +32,11 @@ type Input = String
 
 type State =
   { slug :: String
-  , apiData :: Maybe (Either ApiError BlogPostList)
+  , apiData :: RemoteData ApiError BlogPostList
   }
 
 initialState :: Input -> State
-initialState slug = { slug, apiData: Nothing }
+initialState slug = { slug, apiData: NotAsked }
 
 data Action
   = Initialize
@@ -50,14 +51,15 @@ handleAction
 handleAction = case _ of
   Initialize -> do
     slug <- H.gets _.slug
+    H.modify_ _ { apiData = Loading }
     response <- H.lift $ blogPostTagRequest slug
     let
       newSlug =
         fromMaybe slug $
-          hush response >>= _.posts >>> Array.concatMap _.tags >>> Array.find
+          toMaybe response >>= _.posts >>> Array.concatMap _.tags >>> Array.find
             \tag ->
               slugify tag == slugify slug
-    H.modify_ _ { apiData = Just response, slug = newSlug }
+    H.modify_ _ { apiData = response, slug = newSlug }
   Navigate route event ->
     H.lift $ newUrl route $ Just event
   where
@@ -66,24 +68,19 @@ handleAction = case _ of
     String.toLower
 
 render :: forall m. State -> H.ComponentHTML Action () m
-render { apiData, slug } = case apiData of
-  Nothing ->
-    HH.div_ [ HH.text "Loading..." ]
-  Just (Left e) ->
-    HH.div_ [ HH.text $ "Error making request. " <> renderApiError e ]
-  Just (Right resp) ->
-    let
-      unslugify =
-        String.split (String.Pattern "-")
-          >>> mapMaybe
-            ( \word ->
-                String.uncons word <#> \{ head, tail } ->
-                  String.toUpper (String.fromCodePointArray [ head ]) <> tail
-            )
-          >>> String.joinWith " "
-      headerText = Just $ "Tag: " <> unslugify slug
-    in
-      HH.div [ HP.classes [ H.ClassName "blog-page" ] ]
-        [ renderBlogPostList Navigate resp headerText
-        , renderBlogSidebar Navigate resp.sidebar
-        ]
+render { apiData, slug } = renderRemoteData apiData $ \resp ->
+  let
+    unslugify =
+      String.split (String.Pattern "-")
+        >>> mapMaybe
+          ( \word ->
+              String.uncons word <#> \{ head, tail } ->
+                String.toUpper (String.fromCodePointArray [ head ]) <> tail
+          )
+        >>> String.joinWith " "
+    headerText = Just $ "Tag: " <> unslugify slug
+  in
+    HH.div [ HP.classes [ H.ClassName "blog-page" ] ]
+      [ renderBlogPostList Navigate resp headerText
+      , renderBlogSidebar Navigate resp.sidebar
+      ]

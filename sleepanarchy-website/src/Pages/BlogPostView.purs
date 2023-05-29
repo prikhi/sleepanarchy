@@ -4,7 +4,7 @@ module Pages.BlogPostView (page) where
 
 import Prelude
 
-import Api (class ApiRequest, ApiError, blogPostDetailsRequest, renderApiError)
+import Api (class ApiRequest, ApiError, blogPostDetailsRequest)
 import Api.Types (BlogPostDetails)
 import App
   ( class Markdown
@@ -13,14 +13,15 @@ import App
   , renderMarkdown
   , renderMarkdownUnsafe
   )
-import Data.Either (Either(..), hush)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Traversable (for)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Html.Renderer.Halogen as RH
+import Network.RemoteData (RemoteData(..), toMaybe)
 import Router (Route)
+import Utils (renderRemoteData)
 import Views.Blog (renderBlogSidebar, renderPostMeta, renderTagList)
 import Web.UIEvent.MouseEvent as ME
 
@@ -40,12 +41,12 @@ page =
 
 type State =
   { slug :: String
-  , apiData :: Maybe (Either ApiError BlogPostDetails)
+  , apiData :: RemoteData ApiError BlogPostDetails
   , renderedContent :: Maybe String
   }
 
 initialState :: String -> State
-initialState slug = { slug, apiData: Nothing, renderedContent: Nothing }
+initialState slug = { slug, apiData: NotAsked, renderedContent: Nothing }
 
 data Action
   = Initialize
@@ -61,29 +62,26 @@ handleAction
 handleAction = case _ of
   Initialize -> do
     slug <- H.gets _.slug
+    H.modify_ _ { apiData = Loading }
     response <- H.lift $ blogPostDetailsRequest slug
-    htmlContent <- H.lift $ for (hush response) $ renderMarkdown <<< _.content
-    H.modify_ _ { apiData = Just response, renderedContent = htmlContent }
+    htmlContent <- H.lift $ for (toMaybe response) $ renderMarkdown <<<
+      _.content
+    H.modify_ _ { apiData = response, renderedContent = htmlContent }
   Navigate route event ->
     H.lift $ newUrl route $ Just event
 
 render :: forall w. State -> HH.HTML w Action
-render st = case st.apiData of
-  Nothing ->
-    HH.div_ [ HH.text "Loading..." ]
-  Just (Left e) ->
-    HH.div_ [ HH.text $ "Error making request. " <> renderApiError e ]
-  Just (Right resp) ->
-    HH.div [ HP.classes [ H.ClassName "blog-page" ] ]
-      [ HH.div [ HP.classes [ H.ClassName "post-details" ] ]
-          [ HH.h1 [ HP.classes [ H.ClassName "post-title" ] ]
-              [ HH.text resp.title ]
-          , renderPostMeta Navigate resp
-          , HH.div [ HP.classes [ H.ClassName "post-content" ] ]
-              [ RH.render_ $ fromMaybe (renderMarkdownUnsafe resp.content)
-                  st.renderedContent
-              ]
-          , renderTagList Navigate resp.tags
-          ]
-      , renderBlogSidebar Navigate resp.sidebar
-      ]
+render st = renderRemoteData st.apiData $ \resp ->
+  HH.div [ HP.classes [ H.ClassName "blog-page" ] ]
+    [ HH.div [ HP.classes [ H.ClassName "post-details" ] ]
+        [ HH.h1 [ HP.classes [ H.ClassName "post-title" ] ]
+            [ HH.text resp.title ]
+        , renderPostMeta Navigate resp
+        , HH.div [ HP.classes [ H.ClassName "post-content" ] ]
+            [ RH.render_ $ fromMaybe (renderMarkdownUnsafe resp.content)
+                st.renderedContent
+            ]
+        , renderTagList Navigate resp.tags
+        ]
+    , renderBlogSidebar Navigate resp.sidebar
+    ]

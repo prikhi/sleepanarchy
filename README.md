@@ -107,8 +107,6 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
     * Page Title, SEO, structured meta-data
         * On index.html for initial load
         * Update on page changes(send effect after api data loads?)
-    * switch api data from `Maybe (Either ...)` to `RemoteData`
-    * standardize rendering of notasked/loading/error/success api data
     * store & render previous page on page change, delay rendering of loading
       state by some ms to prevent quick flash
         * BaseSite should create & subscribe to an emitter on init. When we get

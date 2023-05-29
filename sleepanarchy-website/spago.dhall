@@ -44,6 +44,7 @@ to generate this file without the comments in this block.
   , "prelude"
   , "profunctor"
   , "refs"
+  , "remotedata"
   , "routing"
   , "semirings"
   , "strings"

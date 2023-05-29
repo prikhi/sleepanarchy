@@ -15,13 +15,13 @@ import Api
 import Api.Types (AdminBlogPost)
 import Data.Argonaut (Json, encodeJson, (:=?), (~>?))
 import Data.Array (foldr)
-import Data.Either (Either(..))
 import Data.Int as Int
 import Data.Maybe (Maybe(..), isJust, maybe)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Utils (showDate)
+import Network.RemoteData (RemoteData(..))
+import Utils (renderRemoteData, showDate)
 import Views.Forms (mkCheckbox, mkInput, mkSelect, mkSubmit, mkTextArea)
 
 page :: forall q o m. ApiRequest m => H.Component q Int o m
@@ -35,8 +35,8 @@ page = H.mkComponent
 type State =
   { postId :: Int
   , formData :: FormData
-  , apiData :: Maybe (Either ApiError AdminBlogPost)
-  , submitResponse :: Maybe (Either ApiError Unit)
+  , apiData :: RemoteData ApiError AdminBlogPost
+  , submitResponse :: RemoteData ApiError Unit
   }
 
 type FormData =
@@ -61,8 +61,8 @@ initialState postId =
       , publish: Nothing
       , categoryId: Nothing
       }
-  , apiData: Nothing
-  , submitResponse: Nothing
+  , apiData: NotAsked
+  , submitResponse: NotAsked
   }
 
 encodeFormData :: FormData -> Json
@@ -96,9 +96,10 @@ handleAction
 handleAction = case _ of
   Initialize -> do
     postId <- H.gets _.postId
+    H.modify_ _ { apiData = Loading }
     response <- H.lift $ adminBlogPostRequest postId
     -- TODO: if 401, call logout & redirect to login page?
-    H.modify_ _ { apiData = Just response }
+    H.modify_ _ { apiData = response }
   SetTitle str ->
     H.modify_ \st -> st { formData = st.formData { title = Just str } }
   SetSlug str ->
@@ -119,67 +120,65 @@ handleAction = case _ of
   MakeRequest ev -> do
     H.lift $ preventFormSubmission ev
     st <- H.get
+    H.modify_ _ { submitResponse = Loading }
     response <- H.lift $ adminBlogPostUpdateRequest st.postId
       (encodeFormData st.formData)
-    H.modify_ _ { submitResponse = Just response }
+    H.modify_ _ { submitResponse = response }
 
 render :: forall m. State -> H.ComponentHTML Action () m
-render st = case st.apiData of
-  Nothing -> HH.div_ [ HH.text "Loading..." ]
-  Just (Left e) ->
-    HH.div_ [ HH.text $ renderApiError e ]
-  Just (Right resp) ->
-    let
-      mkInput_ = mkInput resp st.formData
-      mkTextArea_ = mkTextArea resp st.formData
-    in
-      HH.div [ HP.classes [ H.ClassName "admin-post-edit" ] ]
-        [ HH.h1_
-            [ HH.text $ "Edit Blog Post #" <> show st.postId
-            , HH.br_
-            , HH.text resp.title
-            ]
-        , HH.small_
-            [ HH.text $ "Created: " <> showDate resp.createdAt
-            , HH.text " | "
-            , HH.text $ "Updated: " <> showDate resp.updatedAt
-            , HH.text " | "
-            , HH.text $ "Published: " <> maybe "Never" showDate resp.publishedAt
-            ]
-        , HH.form [ onSubmit MakeRequest ]
-            [ mkInput_ "Title" Nothing _.title _.title SetTitle
-            , mkInput_ "Slug" (Just "Leave blank to auto-generate")
-                _.slug
-                _.slug
-                SetSlug
-            , mkTextArea_ "Content" Nothing _.content _.content SetContent
-            , mkTextArea_ "Description" (Just "Leave blank to auto-generate")
-                _.description
-                _.description
-                SetDescription
-            , mkInput_ "Tags" (Just "Comma-separated list")
-                _.tags
-                _.tags
-                SetTags
-            , mkSelect resp st.formData "Category" Nothing _.category
-                _.categoryId
-                resp.categories
-                (\{ id, title } -> { id, text: title })
-                SetCategoryId
-            , mkCheckbox resp st.formData "Publish" Nothing
-                (_.publishedAt >>> isJust)
-                _.publish
-                SetPublish
-            , mkSubmit "Update"
-            , errMsg
-            ]
-        ]
+render st = renderRemoteData st.apiData $ \resp ->
+  let
+    mkInput_ = mkInput resp st.formData
+    mkTextArea_ = mkTextArea resp st.formData
+  in
+    HH.div [ HP.classes [ H.ClassName "admin-post-edit" ] ]
+      [ HH.h1_
+          [ HH.text $ "Edit Blog Post #" <> show st.postId
+          , HH.br_
+          , HH.text resp.title
+          ]
+      , HH.small_
+          [ HH.text $ "Created: " <> showDate resp.createdAt
+          , HH.text " | "
+          , HH.text $ "Updated: " <> showDate resp.updatedAt
+          , HH.text " | "
+          , HH.text $ "Published: " <> maybe "Never" showDate resp.publishedAt
+          ]
+      , HH.form [ onSubmit MakeRequest ]
+          [ mkInput_ "Title" Nothing _.title _.title SetTitle
+          , mkInput_ "Slug" (Just "Leave blank to auto-generate")
+              _.slug
+              _.slug
+              SetSlug
+          , mkTextArea_ "Content" Nothing _.content _.content SetContent
+          , mkTextArea_ "Description" (Just "Leave blank to auto-generate")
+              _.description
+              _.description
+              SetDescription
+          , mkInput_ "Tags" (Just "Comma-separated list")
+              _.tags
+              _.tags
+              SetTags
+          , mkSelect resp st.formData "Category" Nothing _.category
+              _.categoryId
+              resp.categories
+              (\{ id, title } -> { id, text: title })
+              SetCategoryId
+          , mkCheckbox resp st.formData "Publish" Nothing
+              (_.publishedAt >>> isJust)
+              _.publish
+              SetPublish
+          , mkSubmit "Update"
+          , errMsg
+          ]
+      ]
   where
   errMsg :: forall w a. HH.HTML w a
   errMsg =
     case st.submitResponse of
-      Nothing -> HH.text ""
-      Just (Right _) -> HH.text "Update Successful"
-      Just (Left err) ->
+      NotAsked -> HH.text ""
+      Loading -> HH.text "Updating Post..."
+      Success _ -> HH.text "Update Successful"
+      Failure err ->
         HH.p_
           [ HH.text $ "An error occured when saving: " <> renderApiError err ]

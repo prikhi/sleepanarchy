@@ -4,19 +4,17 @@ module Pages.BlogPostList (page) where
 
 import Prelude
 
-import Api (class ApiRequest, blogPostListRequest, ApiError, renderApiError)
+import Api (class ApiRequest, ApiError, blogPostListRequest)
 import Api.Types (BlogPostList)
 import App (class Navigation, newUrl)
-import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import Network.RemoteData (RemoteData(..))
 import Router (Route)
-import Views.Blog
-  ( renderBlogPostList
-  , renderBlogSidebar
-  )
+import Utils (renderRemoteData)
+import Views.Blog (renderBlogPostList, renderBlogSidebar)
 import Web.UIEvent.MouseEvent as ME
 
 page :: forall q i o m. ApiRequest m => Navigation m => H.Component q i o m
@@ -29,11 +27,11 @@ page =
     }
 
 type State =
-  { apiData :: Maybe (Either ApiError BlogPostList)
+  { apiData :: RemoteData ApiError BlogPostList
   }
 
 initialState :: forall i. i -> State
-initialState _ = { apiData: Nothing }
+initialState _ = { apiData: NotAsked }
 
 data Action
   = Initialize
@@ -47,19 +45,15 @@ handleAction
   -> H.HalogenM State Action () o m Unit
 handleAction = case _ of
   Initialize -> do
+    H.modify_ _ { apiData = Loading }
     response <- H.lift blogPostListRequest
-    H.modify_ _ { apiData = Just response }
+    H.modify_ _ { apiData = response }
   Navigate route event ->
     H.lift $ newUrl route $ Just event
 
 render :: forall m. State -> H.ComponentHTML Action () m
-render = _.apiData >>> case _ of
-  Nothing ->
-    HH.div_ [ HH.text "Loading..." ]
-  Just (Left e) ->
-    HH.div_ [ HH.text $ "Error making request. " <> renderApiError e ]
-  Just (Right resp) ->
-    HH.div [ HP.classes [ H.ClassName "blog-page" ] ]
-      [ renderBlogPostList Navigate resp Nothing
-      , renderBlogSidebar Navigate resp.sidebar
-      ]
+render st = renderRemoteData st.apiData $ \resp ->
+  HH.div [ HP.classes [ H.ClassName "blog-page" ] ]
+    [ renderBlogPostList Navigate resp Nothing
+    , renderBlogSidebar Navigate resp.sidebar
+    ]

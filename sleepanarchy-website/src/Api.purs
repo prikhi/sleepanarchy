@@ -41,6 +41,7 @@ import Effect.Class (liftEffect)
 import Foreign (ForeignError(..), unsafeToForeign)
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Network.RemoteData (RemoteData, fromEither)
 import Web.Event.Event as E
 
 -- ENDPOINTS
@@ -147,25 +148,28 @@ class Monad m <= ApiRequest m where
   -- | Helper to prevent default on form submissions.
   preventFormSubmission :: SubmitFormEvent -> m Unit
   -- REQUESTS
-  blogPostListRequest :: m (Either ApiError BlogPostList)
-  blogPostArchiveRequest :: Year -> Month -> m (Either ApiError BlogPostList)
-  blogPostTagRequest :: String -> m (Either ApiError BlogPostList)
-  blogPostCategoryRequest :: String -> m (Either ApiError BlogPostList)
-  blogPostDetailsRequest :: String -> m (Either ApiError BlogPostDetails)
-  linkListRequest :: m (Either ApiError RootLinkCategories)
-  linkCategoryRequest :: String -> m (Either ApiError LinkCategoryMap)
-  adminLogin :: String -> String -> m (Either ApiError Unit)
-  adminLogout :: m (Either ApiError Unit)
-  adminBlogPostListRequest :: m (Either ApiError AdminBlogPostList)
-  adminBlogPostRequest :: Int -> m (Either ApiError AdminBlogPost)
-  adminBlogPostUpdateRequest :: Int -> Json -> m (Either ApiError Unit)
-  adminBlogPostCreateRequest :: Json -> m (Either ApiError Int)
-  adminBlogCategoriesRequest :: m (Either ApiError (Array AdminBlogCategory))
-  adminMediaListRequest :: Array String -> m (Either ApiError AdminMediaList)
+  blogPostListRequest :: m (RemoteData ApiError BlogPostList)
+  blogPostArchiveRequest
+    :: Year -> Month -> m (RemoteData ApiError BlogPostList)
+  blogPostTagRequest :: String -> m (RemoteData ApiError BlogPostList)
+  blogPostCategoryRequest :: String -> m (RemoteData ApiError BlogPostList)
+  blogPostDetailsRequest :: String -> m (RemoteData ApiError BlogPostDetails)
+  linkListRequest :: m (RemoteData ApiError RootLinkCategories)
+  linkCategoryRequest :: String -> m (RemoteData ApiError LinkCategoryMap)
+  adminLogin :: String -> String -> m (RemoteData ApiError Unit)
+  adminLogout :: m (RemoteData ApiError Unit)
+  adminBlogPostListRequest :: m (RemoteData ApiError AdminBlogPostList)
+  adminBlogPostRequest :: Int -> m (RemoteData ApiError AdminBlogPost)
+  adminBlogPostUpdateRequest :: Int -> Json -> m (RemoteData ApiError Unit)
+  adminBlogPostCreateRequest :: Json -> m (RemoteData ApiError Int)
+  adminBlogCategoriesRequest
+    :: m (RemoteData ApiError (Array AdminBlogCategory))
+  adminMediaListRequest
+    :: Array String -> m (RemoteData ApiError AdminMediaList)
   adminMediaFolderCreateRequest
-    :: Array String -> String -> m (Either ApiError Unit)
+    :: Array String -> String -> m (RemoteData ApiError Unit)
   adminMediaUploadRequest
-    :: String -> String -> Array String -> m (Either ApiError String)
+    :: String -> String -> Array String -> m (RemoteData ApiError String)
 
 instance appApiRequest :: MonadAff m => ApiRequest m where
   preventFormSubmission (SubmitFormEvent e) = liftEffect $ E.preventDefault e
@@ -199,8 +203,12 @@ instance appApiRequest :: MonadAff m => ApiRequest m where
 -- | response bodies may not decode to JSON but we want to throw a
 -- | StatusCodeError in those cases instead of a ResponseBodyError.
 getRequest
-  :: forall m a. MonadAff m => DecodeJson a => Endpoint -> m (Either ApiError a)
-getRequest endpoint = runExceptT $ do
+  :: forall m a
+   . MonadAff m
+  => DecodeJson a
+  => Endpoint
+  -> m (RemoteData ApiError a)
+getRequest endpoint = map fromEither <<< runExceptT $ do
   response <- ExceptT $ lmap HttpError <$> liftAff
     ( AXW.request AXW.defaultRequest
         { responseFormat = AXRF.string
@@ -215,8 +223,8 @@ getRequest endpoint = runExceptT $ do
     except $ decodeResponse response
 
 noContentPostRequest
-  :: forall m. MonadAff m => Endpoint -> m (Either ApiError Unit)
-noContentPostRequest endpoint = runExceptT $ do
+  :: forall m. MonadAff m => Endpoint -> m (RemoteData ApiError Unit)
+noContentPostRequest endpoint = map fromEither <<< runExceptT $ do
   response <- ExceptT $ lmap HttpError <$> liftAff
     ( AXW.request AXW.defaultRequest
         { responseFormat = AXRF.string
@@ -232,8 +240,12 @@ noContentPostRequest endpoint = runExceptT $ do
     pure unit
 
 postRequest
-  :: forall m a. MonadAff m => DecodeJson a => Endpoint -> m (Either ApiError a)
-postRequest endpoint = runExceptT $ do
+  :: forall m a
+   . MonadAff m
+  => DecodeJson a
+  => Endpoint
+  -> m (RemoteData ApiError a)
+postRequest endpoint = map fromEither <<< runExceptT $ do
   response <- ExceptT $ lmap HttpError <$> liftAff
     ( AXW.request AXW.defaultRequest
         { responseFormat = AXRF.string

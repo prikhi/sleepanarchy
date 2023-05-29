@@ -13,12 +13,12 @@ import Api
   , renderApiError
   )
 import App (class Auth, class Navigation, newUrl, setLoggedIn)
-import Data.Either (Either(..), isRight)
 import Data.Maybe (Maybe(..))
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Network.RemoteData (RemoteData(..), isSuccess)
 import Router (Route, parseRedirectPath)
 
 page
@@ -37,7 +37,7 @@ page =
 type State =
   { username :: String
   , password :: String
-  , response :: Maybe (Either ApiError Unit)
+  , response :: RemoteData ApiError Unit
   , redirectTo :: Route
   }
 
@@ -45,7 +45,7 @@ initialState :: Maybe String -> State
 initialState mbRedirectPath =
   { username: ""
   , password: ""
-  , response: Nothing
+  , response: NotAsked
   , redirectTo: parseRedirectPath mbRedirectPath
   }
 
@@ -69,11 +69,12 @@ handleAction = case _ of
   MakeRequest ev -> do
     H.lift $ preventFormSubmission ev
     st <- H.get
+    H.modify_ _ { response = Loading }
     response <- H.lift $ adminLogin st.username st.password
-    when (isRight response) $ do
+    when (isSuccess response) $ do
       H.lift setLoggedIn
       H.lift $ newUrl st.redirectTo Nothing
-    H.modify_ _ { response = Just response }
+    H.modify_ _ { response = response }
 
 render :: forall m. State -> H.ComponentHTML Action () m
 render st =
@@ -104,9 +105,7 @@ render st =
   errMsg :: forall w a. HH.HTML w a
   errMsg =
     case st.response of
-      Nothing -> HH.text ""
-      Just (Right _) -> HH.text ""
-      Just (Left err@(StatusCodeError resp)) ->
+      Failure err@(StatusCodeError resp) ->
         if resp.status == StatusCode 401 then
           HH.p_ [ HH.text "Incorrect username or password." ]
         else
@@ -114,8 +113,10 @@ render st =
             [ HH.text $ "An error occured when trying to log in: " <>
                 renderApiError err
             ]
-      Just (Left err) ->
+      Failure err ->
         HH.p_
           [ HH.text $ "An error occured when trying to log in: " <>
               renderApiError err
           ]
+      _ ->
+        HH.text ""

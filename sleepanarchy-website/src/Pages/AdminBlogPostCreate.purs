@@ -16,13 +16,13 @@ import Api.Types (AdminBlogCategory)
 import App (class Navigation, newUrl)
 import Data.Argonaut (encodeJson)
 import Data.Array as Array
-import Data.Either (Either(..), fromRight)
 import Data.Int as Int
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String as String
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import Network.RemoteData (RemoteData(..), withDefault)
 import Router (AdminRoute(..), Route(..))
 import Views.Forms (mkCheckbox, mkInput, mkSelect, mkSubmit, mkTextArea)
 
@@ -38,8 +38,8 @@ page = H.mkComponent
 
 type State =
   { formData :: FormData
-  , submitResponse :: Maybe ApiError
-  , categoriesResponse :: Maybe (Either ApiError (Array AdminBlogCategory))
+  , submitResponse :: RemoteData ApiError Unit
+  , categoriesResponse :: RemoteData ApiError (Array AdminBlogCategory)
   }
 
 type FormData =
@@ -63,8 +63,8 @@ initialState _ =
       , publish: false
       , categoryId: 0
       }
-  , submitResponse: Nothing
-  , categoriesResponse: Nothing
+  , submitResponse: NotAsked
+  , categoriesResponse: NotAsked
   }
 
 data Action
@@ -86,8 +86,9 @@ handleAction
   -> H.HalogenM State Action () o m Unit
 handleAction = case _ of
   Initialize -> do
+    H.modify_ _ { categoriesResponse = Loading }
     response <- H.lift $ adminBlogCategoriesRequest
-    H.modify_ _ { categoriesResponse = Just response }
+    H.modify_ _ { categoriesResponse = response }
   SetTitle str ->
     H.modify_ \st -> st { formData = st.formData { title = str } }
   SetSlug str ->
@@ -111,12 +112,13 @@ handleAction = case _ of
   MakeRequest ev -> do
     H.lift $ preventFormSubmission ev
     st <- H.get
+    H.modify_ _ { submitResponse = Loading }
     H.lift (adminBlogPostCreateRequest (encodeJson st.formData)) >>=
       case _ of
-        Right pId ->
+        Success pId ->
           H.lift $ newUrl (Admin $ AdminBlogPostEdit pId) Nothing
-        Left err ->
-          H.modify_ _ { submitResponse = Just err }
+        response ->
+          H.modify_ _ { submitResponse = map (const unit) response }
 
 render :: forall m. State -> H.ComponentHTML Action () m
 render st =
@@ -139,8 +141,8 @@ render st =
               SetDescription
           , mkInput_ "Tags" (Just "Comma-separated list") _.tags SetTags
           , mkSelect_ "Category" Nothing _.categoryId
-              ( Array.cons { id: 0, title: "Select a Category" } $ maybe []
-                  (fromRight [])
+              ( Array.cons { id: 0, title: "Select a Category" } $ withDefault
+                  []
                   st.categoriesResponse
               )
               (\{ id, title } -> { id, text: title })
@@ -154,7 +156,9 @@ render st =
   errMsg :: forall w a. HH.HTML w a
   errMsg =
     case st.submitResponse of
-      Nothing -> HH.text ""
-      Just err ->
+      NotAsked -> HH.text ""
+      Loading -> HH.text "Submitting post..."
+      Success _ -> HH.text ""
+      Failure err ->
         HH.p_
           [ HH.text $ "An error occured when saving: " <> renderApiError err ]

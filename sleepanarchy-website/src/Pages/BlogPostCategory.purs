@@ -4,23 +4,19 @@ module Pages.BlogPostCategory (page, Input) where
 
 import Prelude
 
-import Api
-  ( class ApiRequest
-  , ApiError
-  , blogPostCategoryRequest
-  , renderApiError
-  )
+import Api (class ApiRequest, ApiError, blogPostCategoryRequest)
 import Api.Types (BlogPostList)
 import App (class Navigation, newUrl)
 import Data.Array (mapMaybe)
 import Data.Array as Array
-import Data.Either (Either(..), hush)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String as String
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import Network.RemoteData (RemoteData(..), toMaybe)
 import Router (Route)
+import Utils (renderRemoteData)
 import Views.Blog (renderBlogPostList, renderBlogSidebar)
 import Web.UIEvent.MouseEvent as ME
 
@@ -37,11 +33,11 @@ type Input = String
 type State =
   { slug :: String
   , title :: Maybe String
-  , apiData :: Maybe (Either ApiError BlogPostList)
+  , apiData :: RemoteData ApiError BlogPostList
   }
 
 initialState :: Input -> State
-initialState slug = { slug, apiData: Nothing, title: Nothing }
+initialState slug = { slug, apiData: NotAsked, title: Nothing }
 
 data Action
   = Initialize
@@ -56,12 +52,13 @@ handleAction
 handleAction = case _ of
   Initialize -> do
     slug <- H.gets _.slug
+    H.modify_ _ { apiData = Loading }
     response <- H.lift $ blogPostCategoryRequest $ slugify slug
     let
       title =
-        hush response >>= _.posts >>> map (_.category >>> _.title) >>>
+        toMaybe response >>= _.posts >>> map (_.category >>> _.title) >>>
           Array.head
-    H.modify_ _ { apiData = Just response, title = title }
+    H.modify_ _ { apiData = response, title = title }
   Navigate route event ->
     H.lift $ newUrl route $ Just event
   where
@@ -70,24 +67,19 @@ handleAction = case _ of
     String.toLower
 
 render :: forall m. State -> H.ComponentHTML Action () m
-render { apiData, slug, title } = case apiData of
-  Nothing ->
-    HH.div_ [ HH.text "Loading..." ]
-  Just (Left e) ->
-    HH.div_ [ HH.text $ "Error making request. " <> renderApiError e ]
-  Just (Right resp) ->
-    let
-      unslugify =
-        String.split (String.Pattern "-")
-          >>> mapMaybe
-            ( \word ->
-                String.uncons word <#> \{ head, tail } ->
-                  String.toUpper (String.fromCodePointArray [ head ]) <> tail
-            )
-          >>> String.joinWith " "
-      headerText = Just $ "Category: " <> fromMaybe (unslugify slug) title
-    in
-      HH.div [ HP.classes [ H.ClassName "blog-page" ] ]
-        [ renderBlogPostList Navigate resp headerText
-        , renderBlogSidebar Navigate resp.sidebar
-        ]
+render { apiData, slug, title } = renderRemoteData apiData $ \resp ->
+  let
+    unslugify =
+      String.split (String.Pattern "-")
+        >>> mapMaybe
+          ( \word ->
+              String.uncons word <#> \{ head, tail } ->
+                String.toUpper (String.fromCodePointArray [ head ]) <> tail
+          )
+        >>> String.joinWith " "
+    headerText = Just $ "Category: " <> fromMaybe (unslugify slug) title
+  in
+    HH.div [ HP.classes [ H.ClassName "blog-page" ] ]
+      [ renderBlogPostList Navigate resp headerText
+      , renderBlogSidebar Navigate resp.sidebar
+      ]

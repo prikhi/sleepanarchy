@@ -2,21 +2,16 @@ module Pages.AdminBlogPostList (page) where
 
 import Prelude
 
-import Api
-  ( class ApiRequest
-  , ApiError
-  , adminBlogPostListRequest
-  , renderApiError
-  )
+import Api (class ApiRequest, ApiError, adminBlogPostListRequest)
 import Api.Types (AdminBlogPostList, AdminBlogPostListItem)
 import App (class Navigation, newUrl)
-import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), maybe)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import Network.RemoteData (RemoteData(..))
 import Router (AdminRoute(..), Route(..), navLinkAttr)
-import Utils (showDate)
+import Utils (renderRemoteData, showDate)
 import Web.UIEvent.MouseEvent as ME
 
 page :: forall q i o m. ApiRequest m => Navigation m => H.Component q i o m
@@ -28,11 +23,11 @@ page = H.mkComponent
   }
 
 type State =
-  { apiData :: Maybe (Either ApiError AdminBlogPostList)
+  { apiData :: RemoteData ApiError AdminBlogPostList
   }
 
 initialState :: forall i. i -> State
-initialState _ = { apiData: Nothing }
+initialState _ = { apiData: NotAsked }
 
 data Action
   = Initialize
@@ -46,37 +41,34 @@ handleAction
   -> H.HalogenM State Action () o m Unit
 handleAction = case _ of
   Initialize -> do
+    H.modify_ _ { apiData = Loading }
     response <- H.lift adminBlogPostListRequest
     -- TODO: if 401, call logout & redirect to login page?
-    H.modify_ _ { apiData = Just response }
+    H.modify_ _ { apiData = response }
   Navigate route ev ->
     H.lift $ newUrl route $ Just ev
 
 render :: forall m. State -> H.ComponentHTML Action () m
-render = _.apiData >>> case _ of
-  Nothing -> HH.div_ [ HH.text "Loading..." ]
-  Just (Left e) ->
-    HH.div_ [ HH.text $ renderApiError e ]
-  Just (Right resp) ->
-    HH.div [ HP.classes [ H.ClassName "admin-post-list" ] ]
-      [ HH.h1_ [ HH.text "Blog Posts" ]
-      , HH.a (navLinkAttr Navigate $ Admin AdminBlogPostCreate)
-          [ HH.text "New Blog Post" ]
-      , HH.table_
-          [ HH.thead_
-              [ HH.tr_
-                  [ HH.th_ [ HH.text "ID" ]
-                  , HH.th_ [ HH.text "Title" ]
-                  , HH.th_ [ HH.text "Category" ]
-                  , HH.th [ HP.classes [ H.ClassName "date" ] ]
-                      [ HH.text "Created" ]
-                  , HH.th [ HP.classes [ H.ClassName "date" ] ]
-                      [ HH.text "Published" ]
-                  ]
-              ]
-          , HH.tbody_ $ map tableRow resp.posts
-          ]
-      ]
+render st = renderRemoteData st.apiData $ \resp ->
+  HH.div [ HP.classes [ H.ClassName "admin-post-list" ] ]
+    [ HH.h1_ [ HH.text "Blog Posts" ]
+    , HH.a (navLinkAttr Navigate $ Admin AdminBlogPostCreate)
+        [ HH.text "New Blog Post" ]
+    , HH.table_
+        [ HH.thead_
+            [ HH.tr_
+                [ HH.th_ [ HH.text "ID" ]
+                , HH.th_ [ HH.text "Title" ]
+                , HH.th_ [ HH.text "Category" ]
+                , HH.th [ HP.classes [ H.ClassName "date" ] ]
+                    [ HH.text "Created" ]
+                , HH.th [ HP.classes [ H.ClassName "date" ] ]
+                    [ HH.text "Published" ]
+                ]
+            ]
+        , HH.tbody_ $ map tableRow resp.posts
+        ]
+    ]
   where
   tableRow :: forall w. AdminBlogPostListItem -> HH.HTML w Action
   tableRow post =
