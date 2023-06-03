@@ -167,4 +167,4 @@ jobs:
           cache: npm
           cache-dependency-path: sleepanarchy-website/package-lock.json
       # Dev builds until we can fix SRI plugin on GitHub(prod builds work fine locally)
-      - run: cd sleepanarchy-website && npm ci && npx spago install && npm run build -- --mode development
+      - run: cd sleepanarchy-website && npm ci && npx purs-tidy check src && npx spago install && npm run build -- --mode development
