@@ -13,7 +13,12 @@ import Api
   , renderApiError
   )
 import Api.Types (AdminBlogCategory)
-import App (class Navigation, newUrl)
+import App
+  ( class Navigation
+  , class PageDataNotifier
+  , mkPageDataNotifierEval
+  , newUrl
+  )
 import Data.Argonaut (encodeJson)
 import Data.Array as Array
 import Data.Int as Int
@@ -26,11 +31,16 @@ import Network.RemoteData (RemoteData(..), withDefault)
 import Router (AdminRoute(..), Route(..))
 import Views.Forms (mkCheckbox, mkInput, mkSelect, mkSubmit, mkTextArea)
 
-page :: forall q i o m. ApiRequest m => Navigation m => H.Component q i o m
+page
+  :: forall q i o m
+   . ApiRequest m
+  => PageDataNotifier m
+  => Navigation m
+  => H.Component q i o m
 page = H.mkComponent
   { initialState
   , render
-  , eval: H.mkEval H.defaultEval
+  , eval: mkPageDataNotifierEval H.defaultEval
       { handleAction = handleAction
       , initialize = Just Initialize
       }
@@ -39,7 +49,7 @@ page = H.mkComponent
 type State =
   { formData :: FormData
   , submitResponse :: RemoteData ApiError Unit
-  , categoriesResponse :: RemoteData ApiError (Array AdminBlogCategory)
+  , apiData :: RemoteData ApiError (Array AdminBlogCategory)
   }
 
 type FormData =
@@ -64,7 +74,7 @@ initialState _ =
       , categoryId: 0
       }
   , submitResponse: NotAsked
-  , categoriesResponse: NotAsked
+  , apiData: NotAsked
   }
 
 data Action
@@ -86,9 +96,9 @@ handleAction
   -> H.HalogenM State Action () o m Unit
 handleAction = case _ of
   Initialize -> do
-    H.modify_ _ { categoriesResponse = Loading }
+    H.modify_ _ { apiData = Loading }
     response <- H.lift $ adminBlogCategoriesRequest
-    H.modify_ _ { categoriesResponse = response }
+    H.modify_ _ { apiData = response }
   SetTitle str ->
     H.modify_ \st -> st { formData = st.formData { title = str } }
   SetSlug str ->
@@ -143,7 +153,7 @@ render st =
           , mkSelect_ "Category" Nothing _.categoryId
               ( Array.cons { id: 0, title: "Select a Category" } $ withDefault
                   []
-                  st.categoriesResponse
+                  st.apiData
               )
               (\{ id, title } -> { id, text: title })
               SetCategoryId

@@ -3,7 +3,15 @@ module Pages.AdminDashboard (page) where
 import Prelude
 
 import Api (class ApiRequest, adminLogout)
-import App (class Auth, class Navigation, isLoggedIn, newUrl, setLoggedOut)
+import App
+  ( class Auth
+  , class Navigation
+  , class PageDataNotifier
+  , isLoggedIn
+  , newUrl
+  , pageDataReceived
+  , setLoggedOut
+  )
 import Data.Maybe (Maybe(..))
 import Halogen as H
 import Halogen.HTML as HH
@@ -17,6 +25,7 @@ page
    . Navigation m
   => Auth m
   => ApiRequest m
+  => PageDataNotifier m
   => H.Component q i o m
 page =
   H.mkComponent
@@ -41,12 +50,14 @@ handleAction
    . Navigation m
   => Auth m
   => ApiRequest m
+  => PageDataNotifier m
   => Action
   -> H.HalogenM State Action () o m Unit
 handleAction = case _ of
   Initialize -> do
     isAuthed <- H.lift isLoggedIn
     H.modify_ $ const isAuthed
+    H.lift pageDataReceived
   NavigateTo route ev -> do
     H.lift $ newUrl route $ Just ev
   LogOut -> H.lift $ do

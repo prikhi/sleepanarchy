@@ -29,6 +29,7 @@ to generate this file without the comments in this block.
   , "foldable-traversable"
   , "foreign"
   , "halogen"
+  , "halogen-subscriptions"
   , "html-parser-halogen"
   , "http-methods"
   , "integers"

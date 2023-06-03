@@ -9,14 +9,22 @@ import App
   , class GetTime
   , class Markdown
   , class Navigation
+  , class PageDataListener
+  , class PageDataNotifier
+  , PageDataDelayedNotif
   , getToday
   , isLoggedIn
+  , killDelayedPageDataNotif
   , newUrl
+  , notifyPageDataAfterMs
+  , pageDataActionEmitter
   )
 import BaseAdmin as BaseAdmin
 import Data.Date (Date, canonicalDate, year)
 import Data.Enum (fromEnum)
-import Data.Maybe (Maybe(..))
+import Data.Foldable (for_)
+import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Time.Duration (Milliseconds(..))
 import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.HTML as HH
@@ -48,6 +56,8 @@ component
   => Auth m
   => FileUpload m
   => Navigation m
+  => PageDataListener m
+  => PageDataNotifier m
   => Markdown m
   => H.Component Query Route o m
 component = H.mkComponent
@@ -69,6 +79,9 @@ data Action
   = Initialize
   -- | Respond to a nav menu click by changing the route & url.
   | NavClick Route ME.MouseEvent
+  -- | Clear the stored previous page, forcing us to render the current page,
+  -- | whether the data is loaded or not.
+  | ClearPreviousPage
 
 type Slots =
   ( homePageSlot :: forall query. H.Slot query Void Unit
@@ -79,7 +92,7 @@ type Slots =
       forall query. H.Slot query Void BlogPostCategory.Input
   , viewLinksSlot :: forall query. H.Slot query Void Unit
   , viewLinkCategorySlot :: forall query. H.Slot query Void String
-  , viewAdminSlot :: forall query. H.Slot query Void AdminRoute
+  , viewAdminSlot :: forall query. H.Slot query Void Unit
   )
 
 _homePage :: Proxy "homePageSlot"
@@ -108,30 +121,37 @@ _viewAdmin = Proxy
 
 -- | The base app only cares about the current page & date, all other state is
 -- | stored within the various `Page.*` module componets.
-type State = { currentPage :: Route, currentDate :: Date }
+type State =
+  { currentPage :: Route
+  , previousPage :: Maybe Route
+  , loadingWait :: Maybe PageDataDelayedNotif
+  , currentDate :: Date
+  }
 
 initial :: Route -> State
 initial route =
   { currentPage: route
+  , previousPage: Nothing
+  , loadingWait: Nothing
   , currentDate: canonicalDate bottom bottom bottom
   }
 
 handleQuery
   :: forall o m a
    . Auth m
+  => PageDataListener m
   => Navigation m
   => Query a
   -> H.HalogenM State Action Slots o m (Maybe a)
 handleQuery = case _ of
   UpdateRoute newRoute next -> do
     isAuthed <- H.lift isLoggedIn
-    let setPageToNewRoute = H.modify_ (_ { currentPage = newRoute })
     case newRoute of
       Admin (Login mbRedirectPath) ->
         if isAuthed then
           H.lift $ newUrl (parseRedirectPath mbRedirectPath) Nothing
         else
-          setPageToNewRoute
+          setPageToNewRoute newRoute
       Admin adminRoute ->
         if not isAuthed then do
           let
@@ -140,44 +160,79 @@ handleQuery = case _ of
               else Just $ reverse newRoute
           H.lift $ newUrl (Admin $ Login mbRedirectTo) Nothing
         else
-          setPageToNewRoute
+          setPageToNewRoute newRoute
       _ ->
-        setPageToNewRoute
+        setPageToNewRoute newRoute
     pure $ Just next
+  where
+  -- Kick off the async page data clearer then set the new page & previous
+  -- page.
+  setPageToNewRoute :: Route -> H.HalogenM State Action Slots o m Unit
+  setPageToNewRoute newRoute = do
+    delayedNotif <- H.lift $ notifyPageDataAfterMs $ Milliseconds 250.0
+    H.modify_
+      ( \st -> st
+          { currentPage = newRoute
+          , previousPage = Just st.currentPage
+          , loadingWait = Just delayedNotif
+          }
+      )
 
 handleAction
   :: forall m o
    . GetTime m
   => Navigation m
+  => PageDataListener m
   => Action
   -> H.HalogenM State Action Slots o m Unit
 handleAction = case _ of
   Initialize -> do
+    H.lift (pageDataActionEmitter ClearPreviousPage) >>= void <<< H.subscribe
     today <- H.lift getToday
     H.modify_ _ { currentDate = today }
   NavClick route event ->
     H.lift $ newUrl route $ Just event
+  ClearPreviousPage -> do
+    mbDelayedNotif <- H.gets _.loadingWait
+    H.lift $ for_ mbDelayedNotif killDelayedPageDataNotif
+    H.modify_ _ { previousPage = Nothing, loadingWait = Nothing }
 
 -- | Render the Header & Page Content.
+-- |
+-- | If a previousPage page exists, continue rendering it while rendering the new
+-- | page as hidden.
 render
   :: forall m
    . ApiRequest m
   => Navigation m
   => Auth m
   => FileUpload m
+  => PageDataNotifier m
   => Markdown m
   => State
   -> H.ComponentHTML Action Slots m
-render { currentPage, currentDate } =
+render { currentPage, previousPage, currentDate } =
   case currentPage of
     Admin adminRoute ->
-      HH.slot_ _viewAdmin adminRoute BaseAdmin.component adminRoute
+      let
+        prevAdmin = previousPage >>= case _ of
+          Admin prevAdminRoute -> Just prevAdminRoute
+          _ -> Nothing
+        adminInput = { currentPage: adminRoute, previousPage: prevAdmin }
+      in
+        HH.slot_ _viewAdmin unit BaseAdmin.component adminInput
     _ ->
       HH.div [ HP.id "root" ]
-        [ renderHeader currentPage
-        , HH.div [ HP.id "main" ]
-            [ renderPage currentPage
-            ]
+        [ renderHeader $ fromMaybe currentPage previousPage
+        , HH.div [ HP.id "main" ] $
+            case previousPage of
+              Nothing ->
+                [ renderPage currentPage ]
+              Just prevPage ->
+                [ HH.div [ HP.class_ $ H.ClassName "hidden" ]
+                    [ renderPage currentPage ]
+                , HH.div_ [ renderPage prevPage ]
+                ]
         , renderFooter currentDate
         ]
 
@@ -252,6 +307,7 @@ renderPage
    . ApiRequest m
   => Navigation m
   => Markdown m
+  => PageDataNotifier m
   => Route
   -> H.ComponentHTML a Slots m
 renderPage = pageWrapper <<< case _ of

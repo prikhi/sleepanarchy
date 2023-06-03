@@ -26,6 +26,17 @@ module App
   , setLoggedOut
   , AuthStatus(..)
   , initializeAuthStatus
+  , class HasPageDataSubscription
+  , pageDataEmitter
+  , pageDataNotifier
+  , class PageDataListener
+  , pageDataActionEmitter
+  , notifyPageDataAfterMs
+  , killDelayedPageDataNotif
+  , PageDataDelayedNotif
+  , class PageDataNotifier
+  , pageDataReceived
+  , mkPageDataNotifierEval
   ) where
 
 import Prelude
@@ -54,9 +65,10 @@ import Data.Maybe (Maybe, fromMaybe)
 import Data.Options ((:=))
 import Data.Show.Generic (genericShow)
 import Data.String as String
+import Data.Time.Duration (Milliseconds)
 import Data.Traversable (for)
 import Effect (Effect)
-import Effect.Aff (Aff)
+import Effect.Aff (Aff, Fiber, delay, error, forkAff, killFiber)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Now (nowDate)
@@ -64,9 +76,19 @@ import Effect.Ref (Ref)
 import Effect.Ref as Ref
 import Effect.Unsafe (unsafePerformEffect)
 import Foreign (unsafeToForeign)
+import Halogen as H
+import Halogen.Component (EvalSpec)
+import Halogen.Subscription (Emitter, Listener, SubscribeIO, notify)
 import Highlight as Highlight
 import MarkdownIt (MarkdownIt)
 import MarkdownIt as Markdown
+import Network.RemoteData
+  ( RemoteData
+  , isFailure
+  , isLoading
+  , isNotAsked
+  , isSuccess
+  )
 import Router (Route, reverse)
 import Routing.PushState (PushStateInterface)
 import Web.DOM (Element)
@@ -105,6 +127,7 @@ data AppEnv =
     { nav :: PushStateInterface
     , md :: MarkdownIt
     , authStatus :: Ref AuthStatus
+    , pageDataSub :: SubscribeIO Unit
     }
 
 -- NAVIGATION
@@ -252,3 +275,93 @@ instance authHasAuthStatusEff ::
     liftEffect $ Storage.setItem authStatusLocalStorageKey
       (stringify $ encodeJson Anonymous)
       storage
+
+-- PAGE DATA CHANGES
+
+-- | Has access to halogen-subscription that emits messages when the data for
+-- | the current page has been fetched.
+class HasPageDataSubscription a where
+  pageDataEmitter :: a -> Emitter Unit
+  pageDataNotifier :: a -> Listener Unit
+
+instance hasPageDataSubscriptionAppEnv :: HasPageDataSubscription AppEnv where
+  pageDataEmitter (Env e) = e.pageDataSub.emitter
+  pageDataNotifier (Env e) = e.pageDataSub.listener
+
+-- | Opaque type that represents an async thread that will eventually emit a
+-- | page data loaded notification, even if the data has not been loaded. This
+-- | allows us to _eventually_ show a loading spinner instead of only changing
+-- | the page once data loading is complete.
+newtype PageDataDelayedNotif = PageDataDelayedNotif (Fiber Unit)
+
+class Monad m <= PageDataListener m where
+  -- | Return an emitter that fires off the given action when a subscription
+  -- message is received. Use with 'subscribe'.
+  pageDataActionEmitter :: forall a. a -> m (Emitter a)
+  -- | Fires a subscription message after the given number of milliseconds
+  notifyPageDataAfterMs :: Milliseconds -> m PageDataDelayedNotif
+  -- | Kill the thread that fires a message after a delay.
+  killDelayedPageDataNotif :: PageDataDelayedNotif -> m Unit
+
+instance pageDataListenerHasPageDataSubscriptionEff ::
+  ( HasPageDataSubscription env
+  , MonadAsk env m
+  , MonadEffect m
+  , MonadAff m
+  ) =>
+  PageDataListener m where
+  pageDataActionEmitter action =
+    (action <$ _) <$> asks pageDataEmitter
+  notifyPageDataAfterMs ms = do
+    notifier <- asks pageDataNotifier
+    map PageDataDelayedNotif <<< liftAff $ forkAff $ do
+      delay ms
+      liftEffect $ notify notifier unit
+  killDelayedPageDataNotif (PageDataDelayedNotif fiber) =
+    liftAff $ killFiber (error "Manually Killed PageDataNotifier Fiber") fiber
+
+-- | Notifies listeners when a page has finished loading it's data.
+class Monad m <= PageDataNotifier m where
+  -- | Send a message through the page-data-loaded subscription.
+  pageDataReceived :: m Unit
+
+instance pageDataNotifierHasPageDataSubscriptionEff ::
+  ( HasPageDataSubscription env
+  , MonadAsk env m
+  , MonadEffect m
+  ) =>
+  PageDataNotifier m where
+  pageDataReceived =
+    asks pageDataNotifier >>= flip notify unit >>> liftEffect
+
+-- | Build a Halogen eval function from an eval config. Wrap the 'handleAction'
+-- | function in the config & fire off a page data subscription message when the
+-- | 'apiData' field has changed from the NotAsked/Loading state to a
+-- | Success/Failure state.
+-- |
+-- | TODO: Maybe we want a new 'Page' module & type with an associated function
+-- | that wraps 'mkComponent'. We could then move this into that module and do
+-- | any future "Page" related hook ups into there. E.g., setting page title &
+-- | metadata. That may let us remove the 'PageDataNotifier' typeclass from the
+-- | individual page components as well.
+mkPageDataNotifierEval
+  :: forall state query action slots input output m e resp a
+   . PageDataNotifier m
+  => EvalSpec { apiData :: RemoteData e resp | state } query action slots input
+       output
+       m
+  -> H.HalogenQ query action input a
+  -> H.HalogenM { apiData :: RemoteData e resp | state } action slots output m a
+mkPageDataNotifierEval evalCfg =
+  H.mkEval evalCfg { handleAction = interceptEval evalCfg.handleAction }
+  where
+  -- Check apiData field for NotAsked/Loading -> Success/Failure changes. Call
+  -- pageDataReceived if so.
+  interceptEval handler action = do
+    initialState <- H.gets _.apiData
+    handler action
+    finalState <- H.gets _.apiData
+    let
+      finishedLoading = (isNotAsked initialState || isLoading initialState) &&
+        (isSuccess finalState || isFailure finalState)
+    when finishedLoading $ H.lift pageDataReceived

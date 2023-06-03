@@ -1,4 +1,4 @@
-module BaseAdmin (component) where
+module BaseAdmin (component, Input) where
 
 import Prelude
 
@@ -7,6 +7,7 @@ import App
   ( class Auth
   , class FileUpload
   , class Navigation
+  , class PageDataNotifier
   , newUrl
   , setLoggedOut
   )
@@ -30,13 +31,16 @@ component
    . ApiRequest m
   => Auth m
   => FileUpload m
+  => PageDataNotifier m
   => Navigation m
-  => H.Component q AdminRoute o m
+  => H.Component q Input o m
 component = H.mkComponent
   { initialState: initial
   , render
   , eval: H.mkEval $ H.defaultEval
-      { handleAction = handleAction }
+      { handleAction = handleAction
+      , receive = Just <<< Reinitialize
+      }
   }
 
 type Slots =
@@ -66,14 +70,16 @@ _viewAdminBlogPostCreate = Proxy
 _viewAdminMediaList :: Proxy "viewAdminMediaListSlot"
 _viewAdminMediaList = Proxy
 
-type State = { currentPage :: AdminRoute }
+type Input = { currentPage :: AdminRoute, previousPage :: Maybe AdminRoute }
+type State = { currentPage :: AdminRoute, previousPage :: Maybe AdminRoute }
 
-initial :: AdminRoute -> State
-initial currentPage = { currentPage }
+initial :: Input -> State
+initial = identity
 
 data Action
   = NavClick Route ME.MouseEvent
   | LogOut ME.MouseEvent
+  | Reinitialize Input
 
 handleAction
   :: forall o m
@@ -89,6 +95,8 @@ handleAction = case _ of
     setLoggedOut
     void adminLogout
     newUrl Home (Just event)
+  Reinitialize input ->
+    H.put input
 
 render
   :: forall m
@@ -96,9 +104,10 @@ render
   => Navigation m
   => FileUpload m
   => Auth m
+  => PageDataNotifier m
   => State
   -> H.ComponentHTML Action Slots m
-render { currentPage } =
+render { currentPage, previousPage } =
   case currentPage of
     Login _ ->
       renderPage currentPage
@@ -106,7 +115,14 @@ render { currentPage } =
       HH.div [ HP.classes [ H.ClassName "admin-site" ] ]
         [ renderSidebar currentPage
         , HH.div [ HP.classes [ H.ClassName "admin-content" ] ]
-            [ renderPage currentPage ]
+            case previousPage of
+              Nothing ->
+                [ renderPage currentPage ]
+              Just prevPage ->
+                [ HH.div [ HP.class_ $ H.ClassName "hidden" ]
+                    [ renderPage currentPage ]
+                , HH.div_ [ renderPage prevPage ]
+                ]
 
         ]
 
@@ -149,6 +165,7 @@ renderPage
   => Navigation m
   => FileUpload m
   => Auth m
+  => PageDataNotifier m
   => AdminRoute
   -> H.ComponentHTML a Slots m
 renderPage = case _ of

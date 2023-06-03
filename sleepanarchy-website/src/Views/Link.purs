@@ -51,7 +51,7 @@ renderCategoryRows act@{ visitLink, visitCategory } level (LinkCategoryMap lcm) 
       [ HP.classes [ H.ClassName "clickable" ]
       , HE.onClick (const $ visitLink slug)
       ]
-      [ HH.td [ HP.style $ mkPadding $ level + 1]
+      [ HH.td [ HP.style $ mkPadding $ level + 1 ]
           [ HH.a [ HP.href $ "/l/" <> slug, HP.target "_blank" ]
               [ HH.text title ]
           ]

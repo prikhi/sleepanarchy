@@ -6,7 +6,12 @@ import Prelude
 
 import Api (class ApiRequest, ApiError, blogPostCategoryRequest)
 import Api.Types (BlogPostList)
-import App (class Navigation, newUrl)
+import App
+  ( class Navigation
+  , class PageDataNotifier
+  , mkPageDataNotifierEval
+  , newUrl
+  )
 import Data.Array (mapMaybe)
 import Data.Array as Array
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -20,11 +25,16 @@ import Utils (renderRemoteData)
 import Views.Blog (renderBlogPostList, renderBlogSidebar)
 import Web.UIEvent.MouseEvent as ME
 
-page :: forall q o m. ApiRequest m => Navigation m => H.Component q Input o m
+page
+  :: forall q o m
+   . ApiRequest m
+  => PageDataNotifier m
+  => Navigation m
+  => H.Component q Input o m
 page = H.mkComponent
   { initialState
   , render
-  , eval: H.mkEval H.defaultEval
+  , eval: mkPageDataNotifierEval H.defaultEval
       { handleAction = handleAction, initialize = Just Initialize }
   }
 

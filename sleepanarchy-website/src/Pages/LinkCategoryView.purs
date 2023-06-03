@@ -6,7 +6,13 @@ import Prelude
 
 import Api (class ApiRequest, ApiError, linkCategoryRequest)
 import Api.Types (LinkCategoryMap(..))
-import App (class Navigation, newUrl, openInNewTab)
+import App
+  ( class Navigation
+  , class PageDataNotifier
+  , mkPageDataNotifierEval
+  , newUrl
+  , openInNewTab
+  )
 import Data.Maybe (Maybe(..))
 import Halogen as H
 import Halogen.HTML as HH
@@ -17,11 +23,16 @@ import Utils (renderRemoteData)
 import Views.Link (renderCategoryRows)
 import Web.UIEvent.MouseEvent as ME
 
-page :: forall q o m. ApiRequest m => Navigation m => H.Component q String o m
+page
+  :: forall q o m
+   . ApiRequest m
+  => PageDataNotifier m
+  => Navigation m
+  => H.Component q String o m
 page = H.mkComponent
   { initialState
   , render
-  , eval: H.mkEval H.defaultEval
+  , eval: mkPageDataNotifierEval H.defaultEval
       { handleAction = handleAction, initialize = Just Initialize }
   }
 

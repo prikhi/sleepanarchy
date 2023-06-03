@@ -4,7 +4,12 @@ import Prelude
 
 import Api (class ApiRequest, ApiError, adminBlogPostListRequest)
 import Api.Types (AdminBlogPostList, AdminBlogPostListItem)
-import App (class Navigation, newUrl)
+import App
+  ( class Navigation
+  , class PageDataNotifier
+  , mkPageDataNotifierEval
+  , newUrl
+  )
 import Data.Maybe (Maybe(..), maybe)
 import Halogen as H
 import Halogen.HTML as HH
@@ -14,11 +19,16 @@ import Router (AdminRoute(..), Route(..), navLinkAttr)
 import Utils (renderRemoteData, showDate)
 import Web.UIEvent.MouseEvent as ME
 
-page :: forall q i o m. ApiRequest m => Navigation m => H.Component q i o m
+page
+  :: forall q i o m
+   . ApiRequest m
+  => PageDataNotifier m
+  => Navigation m
+  => H.Component q i o m
 page = H.mkComponent
   { initialState
   , render
-  , eval: H.mkEval H.defaultEval
+  , eval: mkPageDataNotifierEval H.defaultEval
       { handleAction = handleAction, initialize = Just Initialize }
   }
 

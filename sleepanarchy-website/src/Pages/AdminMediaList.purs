@@ -17,8 +17,10 @@ import Api.Types (AdminMediaList, AdminMediaListItem, FileType(..))
 import App
   ( class FileUpload
   , class Navigation
+  , class PageDataNotifier
   , clearInputValue
   , encodeBase64
+  , mkPageDataNotifierEval
   , newUrl
   )
 import Data.Array as Array
@@ -41,12 +43,13 @@ page
   :: forall q o m
    . Navigation m
   => ApiRequest m
+  => PageDataNotifier m
   => FileUpload m
   => H.Component q (Array String) o m
 page = H.mkComponent
   { initialState
   , render
-  , eval: H.mkEval H.defaultEval
+  , eval: mkPageDataNotifierEval H.defaultEval
       { handleAction = handleAction, initialize = Just Initialize }
   }
 

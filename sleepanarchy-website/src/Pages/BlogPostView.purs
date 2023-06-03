@@ -9,6 +9,8 @@ import Api.Types (BlogPostDetails)
 import App
   ( class Markdown
   , class Navigation
+  , class PageDataNotifier
+  , mkPageDataNotifierEval
   , newUrl
   , renderMarkdown
   , renderMarkdownUnsafe
@@ -29,13 +31,14 @@ page
   :: forall q o m
    . ApiRequest m
   => Navigation m
+  => PageDataNotifier m
   => Markdown m
   => H.Component q String o m
 page =
   H.mkComponent
     { initialState
     , render
-    , eval: H.mkEval H.defaultEval
+    , eval: mkPageDataNotifierEval H.defaultEval
         { handleAction = handleAction, initialize = Just Initialize }
     }
 

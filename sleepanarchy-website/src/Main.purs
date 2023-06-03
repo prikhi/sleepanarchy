@@ -12,6 +12,7 @@ import Effect.Class (liftEffect)
 import Effect.Console (info)
 import Halogen as H
 import Halogen.Aff as HA
+import Halogen.Subscription (create)
 import Halogen.VDom.Driver (runUI)
 import Router (Route(..), router)
 import Routing (match)
@@ -24,7 +25,8 @@ main = do
   let initialRoute = fromRight NotFound $ match router initialPath
   md <- mkMarkdownInstance
   authStatus <- initializeAuthStatus
-  let env = Env { nav, md, authStatus }
+  pageDataSub <- create
+  let env = Env { nav, md, authStatus, pageDataSub }
   HA.runHalogenAff do
     liftEffect $ info "Sleepanarchy.com Purescript Client Starting Up..."
     body <- HA.awaitBody

@@ -12,7 +12,14 @@ import Api
   , preventFormSubmission
   , renderApiError
   )
-import App (class Auth, class Navigation, newUrl, setLoggedIn)
+import App
+  ( class Auth
+  , class Navigation
+  , class PageDataNotifier
+  , newUrl
+  , pageDataReceived
+  , setLoggedIn
+  )
 import Data.Maybe (Maybe(..))
 import Halogen as H
 import Halogen.HTML as HH
@@ -25,13 +32,15 @@ page
   :: forall q o m
    . ApiRequest m
   => Navigation m
+  => PageDataNotifier m
   => Auth m
   => H.Component q (Maybe String) o m
 page =
   H.mkComponent
     { initialState
     , render
-    , eval: H.mkEval H.defaultEval { handleAction = handleAction }
+    , eval: H.mkEval H.defaultEval
+        { initialize = Just Initialize, handleAction = handleAction }
     }
 
 type State =
@@ -50,7 +59,8 @@ initialState mbRedirectPath =
   }
 
 data Action
-  = SetUsername String
+  = Initialize
+  | SetUsername String
   | SetPassword String
   | MakeRequest SubmitFormEvent
 
@@ -58,10 +68,13 @@ handleAction
   :: forall o m
    . ApiRequest m
   => Navigation m
+  => PageDataNotifier m
   => Auth m
   => Action
   -> H.HalogenM State Action () o m Unit
 handleAction = case _ of
+  Initialize ->
+    H.lift pageDataReceived
   SetUsername str ->
     H.modify_ _ { username = str }
   SetPassword str ->

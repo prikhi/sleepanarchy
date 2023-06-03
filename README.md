@@ -107,20 +107,9 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
     * Page Title, SEO, structured meta-data
         * On index.html for initial load
         * Update on page changes(send effect after api data loads?)
-    * store & render previous page on page change, delay rendering of loading
-      state by some ms to prevent quick flash
-        * BaseSite should create & subscribe to an emitter on init. When we get
-          a route change message from pushstate, move currentPage to
-          previousPage state field, set new currentPage, and fork thread that
-          delays by ~50ms & then sends the "still waiting" message via the
-          emitter. "Still waiting" should clear the previousPage from the
-          state. When rendering, if previousPage exists, render that instead of
-          the current page.
-        * can we have a wrapper we insert before the `mkEval` call on Page
-          components that looks at `apiData` in the page's state & sends a
-          message to the BaseSite parent when the field goes from Loading to
-          Success or Error? This message should clear the "previous page" so
-          that the current page is rendered.
+    * Loading spinner(fade-in?)
+    * Helpers for `pageDataReceived` on init when component has no `apiData`
+      field or no action for `initialize`.
 * Blog Posts
     * Markdown rendering for post descriptions in list views
     * published date formatting(X days ago)

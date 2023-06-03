@@ -13,6 +13,7 @@ import Api
   , renderApiError
   )
 import Api.Types (AdminBlogPost)
+import App (class PageDataNotifier, mkPageDataNotifierEval)
 import Data.Argonaut (Json, encodeJson, (:=?), (~>?))
 import Data.Array (foldr)
 import Data.Int as Int
@@ -24,11 +25,12 @@ import Network.RemoteData (RemoteData(..))
 import Utils (renderRemoteData, showDate)
 import Views.Forms (mkCheckbox, mkInput, mkSelect, mkSubmit, mkTextArea)
 
-page :: forall q o m. ApiRequest m => H.Component q Int o m
+page
+  :: forall q o m. ApiRequest m => PageDataNotifier m => H.Component q Int o m
 page = H.mkComponent
   { initialState
   , render
-  , eval: H.mkEval H.defaultEval
+  , eval: mkPageDataNotifierEval H.defaultEval
       { handleAction = handleAction, initialize = Just Initialize }
   }
 
