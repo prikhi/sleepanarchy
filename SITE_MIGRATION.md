@@ -3,7 +3,70 @@
 Some sketches of commands used during development that could be used to build
 an old to new DB migration script.
 
-Assumes new database is `sleepanarchy-blog` and old one is `sa-old`.
+## Setup
+
+Create & migrate the new database:
+
+```sh
+createdb sleepanarchy-blog
+cd sleepanarchy-api
+sql-migrate up
+```
+
+Create & import the old database:
+
+```sh
+createdb sa-old -O $(whoami)
+psql sa-old < blog-dump.sql
+```
+
+
+## Blog Post
+
+Dump the old tables, load them into the new database:
+
+```sh
+pg_dump sa-old -h 127.0.0.1 -U postgres \
+    -t blog_blogcategory -t blog_blogpost > blogpost.sql
+psql sleepanarchy-blog -h 127.0.0.1 -U postgres < blogpost.sql
+psql sleepanarchy-blog -h 127.0.0.1 -U postgres
+```
+
+Migrate rows from old tables to new tables:
+
+```sql
+INSERT INTO "blog_category"
+    (id, title, slug, created_at, updated_at)
+SELECT
+    id, title, slug, NOW(), NOW()
+FROM "blog_blogcategory"
+;
+
+INSERT INTO "blog_post"
+    ( id, title, slug
+    , description, content, tags
+    , author_id, category_id, created_at
+    , updated_at, published_at
+    )
+SELECT
+    id, title, slug,
+    description, content, REPLACE(REPLACE(keywords_string, ' ', ','), 'Package,Management', 'Package Management'),
+    1, 1, created,
+    updated, publish_date
+FROM "blog_blogpost"
+;
+```
+
+Drop old tables:
+
+```sql
+DROP TABLE "blog_blogpost";
+DROP TABLE "blog_blogcategory";
+```
+
+You will need to tweak the post markdown to render the code blocks with syntax
+highlighting.
+
 
 ## Links
 
@@ -34,4 +97,11 @@ SELECT
     id, title, slug, description, link, tags_string, category_id, views,
     created, updated
 FROM "linkdump_dump";
+```
+
+Drop old tables:
+
+```sql
+DROP TABLE "linkdump_dump";
+DROP TABLE "linkdump_dumpcategory";
 ```
