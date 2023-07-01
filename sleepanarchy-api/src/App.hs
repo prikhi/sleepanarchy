@@ -178,15 +178,15 @@ mkConfig = do
         (exists, isFolder) <-
             (,) <$> doesPathExist dir <*> doesDirectoryExist dir
         if
-                | isFolder ->
-                    return dir
-                | exists ->
-                    putStrLn ("Specified media directory is a file: " <> dir)
-                        >> exitFailure
-                | otherwise ->
-                    putStrLn ("Specified media directory will be created: " <> dir)
-                        >> createDirectoryIfMissing True dir
-                        >> return dir
+            | isFolder ->
+                return dir
+            | exists ->
+                putStrLn ("Specified media directory is a file: " <> dir)
+                    >> exitFailure
+            | otherwise ->
+                putStrLn ("Specified media directory will be created: " <> dir)
+                    >> createDirectoryIfMissing True dir
+                    >> return dir
 
 
 newtype App a = App

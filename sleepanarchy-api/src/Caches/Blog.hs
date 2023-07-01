@@ -167,13 +167,13 @@ getBlogSidebarCategories = do
     let
         categoryQuery = E.select $ do
             (post E.:& category) <-
-                E.from
-                    $ E.table @BlogPost
+                E.from $
+                    E.table @BlogPost
                         `E.InnerJoin` E.table @BlogCategory
-                    `E.on` ( \(post E.:& category) ->
-                                (post E.^. BlogPostCategoryId)
-                                    E.==. (category E.^. BlogCategoryId)
-                           )
+                            `E.on` ( \(post E.:& category) ->
+                                        (post E.^. BlogPostCategoryId)
+                                            E.==. (category E.^. BlogCategoryId)
+                                   )
             E.groupBy
                 ( category E.^. BlogCategoryTitle
                 , category E.^. BlogCategorySlug

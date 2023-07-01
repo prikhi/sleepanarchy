@@ -319,13 +319,13 @@ getBlogPostsAdmin :: (MonadIO m, DB m) => UserId -> m AdminBlogPostList
 getBlogPostsAdmin _ =
     fmap (AdminBlogPostList . fmap mkPost) . runDB . E.select $ do
         (post E.:& category) <-
-            E.from
-                $ E.table @BlogPost
+            E.from $
+                E.table @BlogPost
                     `E.InnerJoin` E.table @BlogCategory
-                `E.on` ( \(post E.:& category) ->
-                            (post E.^. BlogPostCategoryId)
-                                E.==. (category E.^. BlogCategoryId)
-                       )
+                        `E.on` ( \(post E.:& category) ->
+                                    (post E.^. BlogPostCategoryId)
+                                        E.==. (category E.^. BlogCategoryId)
+                               )
         E.orderBy [E.desc $ post E.^. BlogPostCreatedAt]
         return (post, category)
   where
