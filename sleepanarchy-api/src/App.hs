@@ -347,8 +347,7 @@ foldersToSubPath =
     MediaSubPath
         . normalise
         . joinPath
-        . filter (`notElem` ["..", "../"])
-        . concatMap splitPath
+        . concatMap (filter (`notElem` ["..", "../"]) . splitPath)
 
 
 -- | Knows of the global 'Caches' 'TVar'.
