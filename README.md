@@ -1,13 +1,5 @@
 # SleepAnarchy.com
 
-<!-- markdownlint-configure-file
-
-{ "line-length": { "code_blocks": false }
-, "no-bare-urls": false
-}
-
--->
-
 [![SleepAnarchy.com CI Build Status](https://github.com/prikhi/sleepanarchy/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/prikhi/sleepanarchy/actions/workflows/main.yml)
 
 
