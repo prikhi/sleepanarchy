@@ -1,5 +1,5 @@
 import Control.Exception.Safe (SomeException, throwIO, try)
-import Control.Monad (void, (<=<))
+import Control.Monad (void)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson (FromJSON (..), ToJSON (..), eitherDecode, encode)
 import Data.Bifunctor (Bifunctor (..))
@@ -400,8 +400,7 @@ updateBlogPostTests =
                     (uid,pid,) . fromJust <$> P.get pid
                 void $ updateBlogPost uid pid emptyUpdate
                 (post,) . fromJust <$> runDB (P.get pid)
-            result `satisfies` isRight
-            let (initial, afterUpdate) = fromRight (error "checked") result
+            (initial, afterUpdate) <- expectRight result
             afterUpdate @?= initial
         , testCase "Sets the UpdatedAt field if an update occurs" $ do
             result <- testRunner $ do
@@ -418,8 +417,7 @@ updateBlogPostTests =
                 (blogPostUpdatedAt post,) . blogPostUpdatedAt . fromJust
                     <$> runDB
                         (P.get pid)
-            result `satisfies` isRight
-            let (initial, afterUpdate) = fromRight (error "checked") result
+            (initial, afterUpdate) <- expectRight result
             afterUpdate @?/= initial
         , testCase "Autogenerates a slug if left blank" $ do
             result <-
@@ -452,8 +450,7 @@ updateBlogPostTests =
                             pid
                             emptyUpdate {abpuPublished = Just True}
                     (post,) . fromJust <$> runDB (P.get pid)
-                result `satisfies` isRight
-                let (initial, afterUpdate) = fromRight (error "checked") result
+                (initial, afterUpdate) <- expectRight result
                 blogPostPublishedAt afterUpdate `satisfies` isJust
                 blogPostPublishedAt afterUpdate @?= blogPostPublishedAt initial
                 blogPostUpdatedAt afterUpdate @?= blogPostUpdatedAt initial
@@ -498,8 +495,7 @@ updateBlogPostTests =
                         pid
                         emptyUpdate {abpuTitle = Just "New Title"}
                 return initialCache
-            ctrResult result `satisfies` isRight
-            let initialCache = fromRight (error "checked") $ ctrResult result
+            initialCache <- expectRight $ ctrResult result
             (cBlogSidebarData $ ctrCaches result, initialCache)
                 `satisfies` uncurry (/=)
             map brpdTitle (bsdRecent initialCache) @?= ["title"]
@@ -537,8 +533,7 @@ getBlogCategoriesAdminTests =
                     firstId <- P.entityKey <$> makeBlogCategory "A"
                     return (uid, firstId, secondId)
                 (firstId,secondId,) <$> getBlogCategoriesAdmin uid
-            result `satisfies` isRight
-            let (id1, id2, categories) = fromRight (error "checked") result
+            (id1, id2, categories) <- expectRight result
             categories @?= [AdminBlogCategory "A" id1, AdminBlogCategory "B" id2]
         ]
 
@@ -565,9 +560,9 @@ sidebarArchiveTests =
                 void $ makeBlogPost "title" "" uid cid Nothing
                 getBlogSidebarArchive
             isRight safeResult @? "Does not throw an exception"
-            let result = fromRight (error "checked") safeResult
+            result <- expectRight safeResult
             isRight result @? "Does not return a server error"
-            let archiveRows = fromRight (error "checked") result
+            archiveRows <- expectRight result
             archiveRows @?= []
         , testCase "Returns post counts by year/month partitions" $ do
             result <- testRunner $ runDB $ do
@@ -608,9 +603,9 @@ sidebarTagTests =
                 P.insert_ bp {blogPostTags = "tag1, tag2"}
                 getBlogSidebarTags
             isRight safeResult @? "Does not throw an exception"
-            let result = fromRight (error "checked") safeResult
+            result <- expectRight safeResult
             isRight result @? "Does not return a server error"
-            let tagRows = fromRight (error "checked") result
+            tagRows <- expectRight result
             tagRows @?= []
         , testCase "Ignores empty tags" $ do
             result <- testRunner $ runDB $ do
@@ -728,8 +723,9 @@ createBlogPostTests =
                             , nbpCategoryId = cid
                             }
                 runDB $ (,) <$> P.get pid <*> P.count @_ @_ @BlogPost []
-            snd <$> result @?= Right 1
-            (blogPostPublishedAt <=< fst) <$> result @?= Right Nothing
+            (post, count) <- first fromJust <$> expectRight result
+            count @?= 1
+            blogPostPublishedAt post @?= Nothing
         , testCase "Updates the Sidebar Cache" $ do
             result <- customTestRunner emptyDirectory $ do
                 initialCache <- getBlogSidebarCache
@@ -748,8 +744,7 @@ createBlogPostTests =
                             , nbpCategoryId = cid
                             }
                 return initialCache
-            ctrResult result `satisfies` isRight
-            let initialCache = fromRight (error "checked") $ ctrResult result
+            initialCache <- expectRight $ ctrResult result
             (cBlogSidebarData $ ctrCaches result, initialCache)
                 `satisfies` uncurry (/=)
             map brpdTitle (bsdRecent initialCache) @?= []
@@ -772,8 +767,7 @@ createBlogPostTests =
                             , nbpCategoryId = cid
                             }
                 runDB $ P.get pid
-            result `satisfies` isRight
-            let post = fromJust $ fromRight (error "checked") result
+            post <- fromJust <$> expectRight result
             blogPostPublishedAt post `satisfies` isJust
         , testCase "Can auto-generate the slug" $ do
             result <- testRunner $ do
@@ -884,8 +878,7 @@ getAllLinksTests =
                     void $ makeLink "l2" root2Id
                     void $ makeLink "l1" root1Id
                 getAllLinks
-            result `satisfies` isRight
-            let RootLinkCategories cats = fromRight (error "checked") result
+            RootLinkCategories cats <- expectRight result
             lcmCategory <$> cats @?= ["AAA", "ZZZ"]
         , testCase "Returns links ordered by name" $ do
             result <- testRunner $ do
@@ -893,9 +886,7 @@ getAllLinksTests =
                     rootId <- P.entityKey <$> makeLinkCategory "root" Nothing
                     mapM_ (`makeLink` rootId) ["ZZZ", "AAA", "HHH"]
                 getAllLinks
-            result `satisfies` isRight
-            let RootLinkCategories (head -> rootCat) =
-                    fromRight (error "checked") result
+            RootLinkCategories (head -> rootCat) <- expectRight result
             ldTitle <$> lcmLinks rootCat @?= ["AAA", "HHH", "ZZZ"]
         ]
 
@@ -941,8 +932,7 @@ getLinkCategoryTests =
                     void $ makeLink "r2l1" root2Id
                     void $ makeLink "r2l2" root2Id
                 getLinkCategory "root1"
-            result `satisfies` isRight
-            let lcMap = fromRight (error "checked") result
+            lcMap <- expectRight result
             lcMap
                 @?= LinkCategoryMap
                     { lcmCategory = "root1"
@@ -990,8 +980,7 @@ getLinkCategoryTests =
                     void $ makeLink "r1l1" root1Id
                     void $ makeLink "c2l1" c2Id
                 getLinkCategory "c1"
-            result `satisfies` isRight
-            let lcMap = fromRight (error "checked") result
+            lcMap <- expectRight result
             lcMap
                 @?= LinkCategoryMap
                     { lcmCategory = "c1"
@@ -1056,6 +1045,13 @@ satisfies :: (HasCallStack, Show a) => a -> (a -> Bool) -> Assertion
 satisfies val predicate =
     let msg = show val <> " does not satisfy predicate."
      in assertBool msg (predicate val)
+
+
+-- | Assert an 'Either' is the 'Right' value & return it.
+expectRight :: (HasCallStack, Show e, Show a) => Either e a -> IO a
+expectRight result = do
+    result `satisfies` isRight
+    return $ fromRight (error "checked") result
 
 
 -- | Assert two values are _not_ equal.
