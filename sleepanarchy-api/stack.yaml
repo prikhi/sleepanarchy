@@ -18,7 +18,7 @@
 # resolver: ./custom-snapshot.yaml
 # resolver: https://example.com/snapshots/2018-01-01.yaml
 resolver:
-  url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/20/23.yaml
+  url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/21/1.yaml
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -40,7 +40,16 @@ packages:
 # - git: https://github.com/commercialhaskell/stack.git
 #   commit: e7b331f14bcffb8367cd58fbfc8b40ec7642100a
 #
-# extra-deps: []
+extra-deps:
+  - monad-time-0.3.1.0
+  - github: haskell-servant/servant
+    commit: 88408e4a6b1d52088bb6ccf42f04500947410e67
+    subdirs:
+      - servant
+      - servant-auth/servant-auth-docs
+      - servant-auth/servant-auth-server
+      - servant-docs
+      - servant-server
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
