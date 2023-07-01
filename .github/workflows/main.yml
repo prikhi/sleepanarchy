@@ -99,7 +99,7 @@ jobs:
           DB_PASS: hunter2
         continue-on-error: true
 
-  # Cabal Builds w/ Current & Next GHC
+  # Cabal Builds w/ Current GHC
   build-cabal:
     name: GHC / Cabal
     runs-on: ubuntu-latest
@@ -119,7 +119,7 @@ jobs:
           --health-retries 5
     strategy:
       matrix:
-        ghc: ['9.2']
+        ghc: ['9.4']
     steps:
       - uses: actions/checkout@v3
       - name: Cache Cabal Artifacts
