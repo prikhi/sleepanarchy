@@ -7,12 +7,6 @@ module App
   , class Navigation
   , newUrl
   , openInNewTab
-  , class HasMarkdown
-  , getMarkdown
-  , class Markdown
-  , renderMarkdown
-  , renderMarkdownUnsafe
-  , mkMarkdownInstance
   , class GetTime
   , getToday
   , class FileUpload
@@ -62,7 +56,6 @@ import Data.Date (Date)
 import Data.Either (hush)
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe, fromMaybe)
-import Data.Options ((:=))
 import Data.Show.Generic (genericShow)
 import Data.String as String
 import Data.Time.Duration (Milliseconds)
@@ -74,14 +67,10 @@ import Effect.Class (class MonadEffect, liftEffect)
 import Effect.Now (nowDate)
 import Effect.Ref (Ref)
 import Effect.Ref as Ref
-import Effect.Unsafe (unsafePerformEffect)
 import Foreign (unsafeToForeign)
 import Halogen as H
 import Halogen.Component (EvalSpec)
 import Halogen.Subscription (Emitter, Listener, SubscribeIO, notify)
-import Highlight as Highlight
-import MarkdownIt (MarkdownIt)
-import MarkdownIt as Markdown
 import Network.RemoteData
   ( RemoteData
   , isFailure
@@ -125,7 +114,6 @@ derive newtype instance monadReaderAppM :: MonadReader AppEnv AppM
 data AppEnv =
   Env
     { nav :: PushStateInterface
-    , md :: MarkdownIt
     , authStatus :: Ref AuthStatus
     , pageDataSub :: SubscribeIO Unit
     }
@@ -157,41 +145,6 @@ instance navigationHasNav ::
     liftEffect $ nav.pushState (unsafeToForeign {}) $ reverse url
   openInNewTab url =
     liftEffect $ window >>= open url "_blank" "" >>> void
-
--- MARKDOWN
-
-class HasMarkdown a where
-  getMarkdown :: a -> MarkdownIt
-
-instance hasMarkdownAppEnv :: HasMarkdown AppEnv where
-  getMarkdown (Env e) = e.md
-
-class Monad m <= Markdown m where
-  -- | Render the given Markdown String into an HTML String
-  renderMarkdown :: String -> m String
-
-instance markdownHasMarkdown ::
-  ( HasMarkdown env
-  , MonadAsk env m
-  , MonadEffect m
-  ) =>
-  Markdown m where
-  renderMarkdown mdString = do
-    md <- asks getMarkdown
-    liftEffect $ Markdown.render md mdString
-
--- | Build a markdown renderer for use throughout the app.
-mkMarkdownInstance :: Effect MarkdownIt
-mkMarkdownInstance = Markdown.newMarkdownIt Markdown.CommonMark $
-  (Markdown.html := true)
-    <> (Markdown.typographer := true)
-    <> (Markdown.highlight := Highlight.highlight)
-
--- | Unsafely render some markdown into an HTML string.
-renderMarkdownUnsafe :: String -> String
-renderMarkdownUnsafe str = unsafePerformEffect $ do
-  renderer <- mkMarkdownInstance
-  Markdown.render renderer str
 
 -- DATES
 

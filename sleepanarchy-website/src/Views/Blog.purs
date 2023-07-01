@@ -31,6 +31,7 @@ import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import Html.Renderer.Halogen as RH
 import Router (Route(..), navLinkAttr)
 import Utils (showDate)
 import Web.UIEvent.MouseEvent as ME
@@ -69,7 +70,7 @@ renderBlogPostList linkAction listData pageHeader =
           [ postLink bpld bpld.title ]
       , renderPostMeta linkAction bpld
       , HH.p [ HP.classes [ H.ClassName "post-description" ] ]
-          [ HH.text bpld.description ]
+          [ RH.render_ bpld.description ]
       , renderTagList linkAction bpld.tags
       , HH.small_ [ postLink bpld "Read More" ]
       ]

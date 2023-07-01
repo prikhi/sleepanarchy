@@ -63,7 +63,7 @@ module.exports = (env, _) => {
         mode: "development",
         entry: {
             index: "./index.js",
-            styles: ["highlight.js/styles/monokai.css", "./src/styles.sass"],
+            styles: ["./src/skylighting-molokai.css", "./src/styles.sass"],
         },
         output: {
             filename: "[name].[contenthash].js",
@@ -179,9 +179,9 @@ module.exports = (env, _) => {
                     pathRewrite: { ".*": "" },
                 },
                 "/l/": {
-                  target: "http://127.0.0.1:9001",
-                  pathRewrite: { "^/l/": "links/redirect/" }
-                }
+                    target: "http://127.0.0.1:9001",
+                    pathRewrite: { "^/l/": "links/redirect/" },
+                },
             },
         },
         optimization: {

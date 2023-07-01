@@ -7,7 +7,6 @@ import App
   ( class Auth
   , class FileUpload
   , class GetTime
-  , class Markdown
   , class Navigation
   , class PageDataListener
   , class PageDataNotifier
@@ -58,7 +57,6 @@ component
   => Navigation m
   => PageDataListener m
   => PageDataNotifier m
-  => Markdown m
   => H.Component Query Route o m
 component = H.mkComponent
   { initialState: initial
@@ -208,7 +206,6 @@ render
   => Auth m
   => FileUpload m
   => PageDataNotifier m
-  => Markdown m
   => State
   -> H.ComponentHTML Action Slots m
 render { currentPage, previousPage, currentDate } =
@@ -306,7 +303,6 @@ renderPage
   :: forall a m
    . ApiRequest m
   => Navigation m
-  => Markdown m
   => PageDataNotifier m
   => Route
   -> H.ComponentHTML a Slots m

@@ -7,21 +7,17 @@ import Prelude
 import Api (class ApiRequest, ApiError, blogPostDetailsRequest)
 import Api.Types (BlogPostDetails)
 import App
-  ( class Markdown
-  , class Navigation
+  ( class Navigation
   , class PageDataNotifier
   , mkPageDataNotifierEval
   , newUrl
-  , renderMarkdown
-  , renderMarkdownUnsafe
   )
-import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Traversable (for)
+import Data.Maybe (Maybe(..))
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Html.Renderer.Halogen as RH
-import Network.RemoteData (RemoteData(..), toMaybe)
+import Network.RemoteData (RemoteData(..))
 import Router (Route)
 import Utils (renderRemoteData)
 import Views.Blog (renderBlogSidebar, renderPostMeta, renderTagList)
@@ -32,7 +28,6 @@ page
    . ApiRequest m
   => Navigation m
   => PageDataNotifier m
-  => Markdown m
   => H.Component q String o m
 page =
   H.mkComponent
@@ -45,11 +40,10 @@ page =
 type State =
   { slug :: String
   , apiData :: RemoteData ApiError BlogPostDetails
-  , renderedContent :: Maybe String
   }
 
 initialState :: String -> State
-initialState slug = { slug, apiData: NotAsked, renderedContent: Nothing }
+initialState slug = { slug, apiData: NotAsked }
 
 data Action
   = Initialize
@@ -59,7 +53,6 @@ handleAction
   :: forall o m
    . ApiRequest m
   => Navigation m
-  => Markdown m
   => Action
   -> H.HalogenM State Action () o m Unit
 handleAction = case _ of
@@ -67,9 +60,7 @@ handleAction = case _ of
     slug <- H.gets _.slug
     H.modify_ _ { apiData = Loading }
     response <- H.lift $ blogPostDetailsRequest slug
-    htmlContent <- H.lift $ for (toMaybe response) $ renderMarkdown <<<
-      _.content
-    H.modify_ _ { apiData = response, renderedContent = htmlContent }
+    H.modify_ _ { apiData = response }
   Navigate route event ->
     H.lift $ newUrl route $ Just event
 
@@ -81,8 +72,8 @@ render st = renderRemoteData st.apiData $ \resp ->
             [ HH.text resp.title ]
         , renderPostMeta Navigate resp
         , HH.div [ HP.classes [ H.ClassName "post-content" ] ]
-            [ RH.render_ $ fromMaybe (renderMarkdownUnsafe resp.content)
-                st.renderedContent
+            [ RH.render_ resp.content
+
             ]
         , renderTagList Navigate resp.tags
         ]

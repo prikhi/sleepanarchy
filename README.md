@@ -88,11 +88,6 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
 * Blog Posts
     * Paginated list route?
     * Prev/Next links on details page
-    * Serverside rendering of markdown -> html w/ syntax highlighting?
-        * Doing syntax highlighting for _all_ languages add 1MB to the client
-          size(300KB -> 1.4MB). We've pared down the languages to a subset to
-          keep the size reasonable for now _but_ we could just use pandoc to
-          render the markdown w/ pygments & only include the style css.
     * RSS / ATOM feeds?
     * Re-evaluate description auto-generation(render as markdown & then take
       first paragraph? Never auto-gen?)
@@ -116,10 +111,10 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
         * On index.html for initial load
         * Update on page changes(send effect after api data loads?)
     * Loading spinner(fade-in?)
+    * Scroll to top of page or hash on page/url change.
     * Helpers for `pageDataReceived` on init when component has no `apiData`
       field or no action for `initialize`.
 * Blog Posts
-    * Markdown rendering for post descriptions in list views
     * published date formatting(X days ago)
     * Add feeds to sidebar? Or footer? Or both?
     * 404 page
