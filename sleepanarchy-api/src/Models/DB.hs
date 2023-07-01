@@ -41,7 +41,9 @@ BlogPost
     title Text
     slug Text
     description Text
+    descriptionHtml Text
     content Text
+    contentHtml Text
     -- TODO: ditch this for custom PostgresTextArray type?
     -- Lets us process once on save instead of every fetch
     tags Text

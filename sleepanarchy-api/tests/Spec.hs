@@ -21,6 +21,7 @@ import App
 import Caches
 import Caches.Blog
 import Handlers.Admin
+import Handlers.BlogPosts
 import Handlers.Links
 import Models.DB
 import Models.Utils (slugify)
@@ -181,7 +182,7 @@ genPrefixJSONHelper =
 -- errors caused by multiple parallel tests making conflicting changes to
 -- the database.
 dbTests :: TestTree
-dbTests = testGroup "DB Tests" [blogSidebarTests, linkTests, adminTests]
+dbTests = testGroup "DB Tests" [blogTests, linkTests, adminTests]
 
 
 adminTests :: TestTree
@@ -428,6 +429,20 @@ updateBlogPostTests =
                             , abpuSlug = Just ""
                             }
             fmap blogPostSlug <$> result @?= Right (Just "new-title")
+        , testCase "Regenerates description & content HTML" $ do
+            result <- testRunner $ do
+                now <- liftIO getCurrentTime
+                (uid, pid) <- runDB $ do
+                    uid <- P.entityKey <$> makeUser
+                    cid <- P.entityKey <$> makeBlogCategory "category"
+                    p <- mkBlogPost "title" uid cid
+                    pid <- P.insert p {blogPostPublishedAt = Just now}
+                    return (uid, pid)
+                void $ updateBlogPost uid pid emptyUpdate {abpuContent = Just "# Content", abpuDescription = Just "# Description"}
+                fromJust <$> runDB (P.get pid)
+            post <- expectRight result
+            blogPostContentHtml post @?= "<h1 id=\"content\">Content</h1>"
+            blogPostDescriptionHtml post @?= "<h1 id=\"description\">Description</h1>"
         , testCase "Publishes the post if told to" $ do
             result <-
                 testRunner $
@@ -539,10 +554,88 @@ getBlogCategoriesAdminTests =
 
 
 -- | TODO: Move these to Handlers/BlogPostSpec.hs
+blogTests :: TestTree
+blogTests =
+    testGroup
+        "Blog"
+        [ getBlogPostsTests
+        , getBlogPostTests
+        , blogSidebarTests
+        ]
+
+
+getBlogPostsTests :: TestTree
+getBlogPostsTests =
+    testGroup
+        "getBlogPosts"
+        [ testCase "Returns empty list when no posts exist" $ do
+            result <- testRunner getBlogPosts
+            bplPosts <$> result @?= Right []
+        , testCase "Returns empty list when no posts are published" $ do
+            result <- testRunner $ do
+                runDB $ do
+                    uid <- P.entityKey <$> makeUser
+                    cid <- P.entityKey <$> makeBlogCategory "category"
+                    void $ makeBlogPost "title" "" uid cid Nothing
+                getBlogPosts
+            bplPosts <$> result @?= Right []
+        , testCase "Returns HTML descriptions" $ do
+            result <- testRunner $ do
+                now <- liftIO getCurrentTime
+                runDB $ do
+                    uid <- P.entityKey <$> makeUser
+                    cid <- P.entityKey <$> makeBlogCategory "category"
+                    p <- mkBlogPost "title" uid cid
+                    P.insert_
+                        p
+                            { blogPostPublishedAt = Just now
+                            , blogPostDescription = "markdown description"
+                            , blogPostDescriptionHtml = "generated description"
+                            }
+                getBlogPosts
+            posts <- bplPosts <$> expectRight result
+            bpldDescription <$> posts @?= ["generated description"]
+        ]
+
+
+getBlogPostTests :: TestTree
+getBlogPostTests =
+    testGroup
+        "getBlogPost"
+        [ testCase "Throws a 404 when post does not exist" $ do
+            result <- testRunner $ getBlogPost "non-existent"
+            first errHTTPCode result @?= Left 404
+        , testCase "Throws a 404 when post is not published" $ do
+            result <- testRunner $ do
+                runDB $ do
+                    uid <- P.entityKey <$> makeUser
+                    cid <- P.entityKey <$> makeBlogCategory "category"
+                    void $ mkBlogPost "title" uid cid
+                getBlogPost "title"
+            first errHTTPCode result @?= Left 404
+        , testCase "Returns HTML content" $ do
+            result <- testRunner $ do
+                now <- liftIO getCurrentTime
+                runDB $ do
+                    uid <- P.entityKey <$> makeUser
+                    cid <- P.entityKey <$> makeBlogCategory "category"
+                    p <- mkBlogPost "title" uid cid
+                    P.insert_
+                        p
+                            { blogPostPublishedAt = Just now
+                            , blogPostContent = "markdown content"
+                            , blogPostContentHtml = "generated content"
+                            }
+                getBlogPost "title"
+            post <- expectRight result
+            bpdContent post @?= "generated content"
+        ]
+
+
 blogSidebarTests :: TestTree
 blogSidebarTests =
     testGroup
-        "Blog Sidebar"
+        "Sidebar"
         [sidebarArchiveTests, sidebarTagTests, sidebarCategoryTests]
 
 
@@ -726,6 +819,26 @@ createBlogPostTests =
             (post, count) <- first fromJust <$> expectRight result
             count @?= 1
             blogPostPublishedAt post @?= Nothing
+        , testCase "Generates the HTML fields" $ do
+            result <- testRunner $ do
+                (P.entityKey -> uid, P.entityKey -> cid) <-
+                    runDB $ (,) <$> makeUser <*> makeBlogCategory "category"
+                pid <-
+                    createBlogPost
+                        uid
+                        NewBlogPost
+                            { nbpTitle = "The Title"
+                            , nbpSlug = Just "the-title"
+                            , nbpDescription = Just "# Description"
+                            , nbpContent = "# Content\nBody"
+                            , nbpTags = ""
+                            , nbpPublish = False
+                            , nbpCategoryId = cid
+                            }
+                runDB $ P.get pid
+            post <- fromJust <$> expectRight result
+            blogPostContentHtml post @?= "<h1 id=\"content\">Content</h1>\n<p>Body</p>"
+            blogPostDescriptionHtml post @?= "<h1 id=\"description\">Description</h1>"
         , testCase "Updates the Sidebar Cache" $ do
             result <- customTestRunner emptyDirectory $ do
                 initialCache <- getBlogSidebarCache
@@ -1094,7 +1207,9 @@ makeBlogPost title content uid cid mbPublish = do
             title
             (slugify title)
             (T.take 20 content)
+            (fromRight (error "rendering descr") $ renderMarkdown $ T.take 20 content)
             content
+            (fromRight (error "rendering content") $ renderMarkdown content)
             ""
             uid
             cid
@@ -1106,7 +1221,7 @@ makeBlogPost title content uid cid mbPublish = do
 mkBlogPost :: MonadIO m => Text -> UserId -> BlogCategoryId -> m BlogPost
 mkBlogPost title uid cid = do
     now <- liftIO getCurrentTime
-    return $ BlogPost title (slugify title) "" "" "" uid cid now now Nothing
+    return $ BlogPost title (slugify title) "" "" "" "" "" uid cid now now Nothing
 
 
 makeLinkCategory

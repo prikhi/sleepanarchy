@@ -46,13 +46,13 @@ INSERT INTO "blog_post"
     ( id, title, slug
     , description, content, tags
     , author_id, category_id, created_at
-    , updated_at, published_at
+    , updated_at, published_at, content_html, description_html
     )
 SELECT
     id, title, slug,
     description, content, REPLACE(REPLACE(keywords_string, ' ', ','), 'Package,Management', 'Package Management'),
     1, 1, created,
-    updated, publish_date
+    updated, publish_date, '', ''
 FROM "blog_blogpost"
 ;
 ```
@@ -65,7 +65,19 @@ DROP TABLE "blog_blogcategory";
 ```
 
 You will need to tweak the post markdown to render the code blocks with syntax
-highlighting.
+highlighting(old format used indented blocks with `:::language`, new format
+should use fenced code blocks).
+
+You will need to tweak the description fields to include any missing HTML - the
+previous website generated the HTML from the post contents & only put plaintext
+versions in the database..
+
+Finally, run the `regnerate-html` command to pre-generate the HTML for every
+post:
+
+```sh
+stack run sleepanarchy-api-management -- regenerate-html
+```
 
 
 ## Links

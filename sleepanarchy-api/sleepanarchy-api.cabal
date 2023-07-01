@@ -1,6 +1,6 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.35.1.
+-- This file has been generated from package.yaml by hpack version 0.35.2.
 --
 -- see: https://github.com/sol/hpack
 
@@ -73,6 +73,7 @@ library
     , mime-types
     , monad-logger
     , mtl
+    , pandoc
     , password
     , persistent
     , persistent-postgresql
@@ -134,12 +135,15 @@ executable sleepanarchy-api-management
   build-depends:
       aeson
     , base >=4.7 && <5
+    , containers
     , mtl
+    , pandoc
     , password
     , persistent
     , postgresql-simple
     , safe-exceptions
     , servant-auth-server
+    , skylighting-core
     , sleepanarchy-api
     , text
   default-language: GHC2021

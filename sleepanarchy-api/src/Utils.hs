@@ -23,6 +23,7 @@ import Data.Aeson.Types
 import Data.Char (toLower)
 import Data.Function ((&))
 import Data.Proxy (Proxy (..))
+import Data.Text (Text)
 import GHC.Generics
 import Servant.API (HasLink)
 import Servant.API.TypeLevel (IsIn)
@@ -35,6 +36,17 @@ import Servant.Docs
     , notes
     )
 import Servant.Docs.Internal.Pretty (Pretty, pretty)
+import Text.Pandoc
+    ( Extension (Ext_smart)
+    , PandocError
+    , ReaderOptions (readerExtensions)
+    , def
+    , enableExtension
+    , githubMarkdownExtensions
+    , readMarkdown
+    , runPure
+    , writeHtml5String
+    )
 
 
 -- | Generate a 'ToJSON' instance by dropping a prefix from the beginning
@@ -92,3 +104,13 @@ mkEndpointNotes routeDocs =
         defAction
             & notes
                 <>~ [uncurry DocNote routeDocs]
+
+
+-- | Render a markdown string into HTML5.
+renderMarkdown :: Text -> Either PandocError Text
+renderMarkdown src =
+    runPure $
+        readMarkdown
+            def {readerExtensions = enableExtension Ext_smart githubMarkdownExtensions}
+            src
+            >>= writeHtml5String def

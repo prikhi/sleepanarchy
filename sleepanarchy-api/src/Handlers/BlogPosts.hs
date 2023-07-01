@@ -107,7 +107,7 @@ mkPostData (Entity _ BlogPost {..}) (Entity _ category) =
         , bpldCreatedAt = blogPostCreatedAt
         , bpldUpdatedAt = blogPostUpdatedAt
         , bpldPublishedAt = fromJust blogPostPublishedAt
-        , bpldDescription = blogPostDescription
+        , bpldDescription = blogPostDescriptionHtml
         }
 
 
@@ -254,7 +254,7 @@ getBlogPost slug =
                         , bpdUpdatedAt = blogPostUpdatedAt
                         , bpdTags = mkTagList blogPostTags
                         , bpdCategory = mkCategoryData category
-                        , bpdContent = blogPostContent
+                        , bpdContent = blogPostContentHtml
                         , ..
                         }
 

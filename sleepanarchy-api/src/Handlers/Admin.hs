@@ -15,6 +15,7 @@ import Data.Aeson
     , withText
     )
 import Data.ByteString.Base64 (decodeBase64, encodeBase64)
+import Data.Either (fromRight)
 import Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import Data.Text (Text)
 import Data.Text.Encoding (encodeUtf8)
@@ -38,7 +39,7 @@ import App
     )
 import Models.DB
 import Models.Utils (slugify)
-import Utils (prefixParseJSON, prefixToJSON, prefixToJSONWith)
+import Utils (prefixParseJSON, prefixToJSON, prefixToJSONWith, renderMarkdown)
 
 import Data.ByteString qualified as BS
 import Data.ByteString.Char8 qualified as BC
@@ -520,6 +521,8 @@ instance ToSample AdminBlogPostUpdate where
         ]
 
 
+-- | TODO: throw error when rendering markdown fails. handle error in
+-- client.
 updateBlogPost
     :: (DBThrows m, Cache m, Monad m)
     => UserId
@@ -549,7 +552,9 @@ updateBlogPost _ pId AdminBlogPostUpdate {..} = do
                     [ (BlogPostTitle P.=.) <$> abpuTitle
                     , (BlogPostSlug P.=.) <$> slugUpdate
                     , (BlogPostContent P.=.) <$> abpuContent
+                    , (BlogPostContentHtml P.=.) . renderMarkdownSafe <$> abpuContent
                     , (BlogPostDescription P.=.) <$> abpuDescription
+                    , (BlogPostDescriptionHtml P.=.) . renderMarkdownSafe <$> abpuDescription
                     , (BlogPostTags P.=.) <$> abpuTags
                     , (BlogPostPublishedAt P.=.) <$> publishUpdate
                     ]
@@ -557,6 +562,9 @@ updateBlogPost _ pId AdminBlogPostUpdate {..} = do
             P.update pId $ (BlogPostUpdatedAt P.=. now) : updates
     bustBlogSidebarCache
     return NoContent
+  where
+    renderMarkdownSafe :: Text -> Text
+    renderMarkdownSafe s = fromRight s $ renderMarkdown s
 
 
 -- NEW BLOG POST
@@ -608,22 +616,17 @@ instance ToSample NewBlogPost where
         ]
 
 
--- TODO: validation:
-
+-- | TODO: validation:
 -- * non-empty title & slug
-
-
 -- * slug is unique(when specified)
-
-
 -- * category exists
-
-
 --
 -- TODO: Do we want to keep description auto-generation? Should it be first
 -- _paragraph_ of the content instead of the first line? Should we render
 -- the content field's markdown into HTML & take the first paragraph from
 -- that? Seems simpler to just require a non-empty Description field...
+--
+-- TODO: throw error if markdown rendering fails. handle error in client.
 createBlogPost
     :: (MonadIO m, DB m, Cache m) => UserId -> NewBlogPost -> m BlogPostId
 createBlogPost uid NewBlogPost {..} = do
@@ -635,7 +638,9 @@ createBlogPost uid NewBlogPost {..} = do
                 { blogPostTitle = nbpTitle
                 , blogPostSlug = slug
                 , blogPostDescription = description
+                , blogPostDescriptionHtml = renderMarkdownSafe description
                 , blogPostContent = nbpContent
+                , blogPostContentHtml = renderMarkdownSafe nbpContent
                 , blogPostTags = nbpTags
                 , blogPostCreatedAt = now
                 , blogPostUpdatedAt = now
@@ -665,3 +670,5 @@ createBlogPost uid NewBlogPost {..} = do
             >>= \case
                 Nothing -> incrementSlugAndInsert post (ix + 1)
                 Just postId -> return postId
+    renderMarkdownSafe :: Text -> Text
+    renderMarkdownSafe s = fromRight s $ renderMarkdown s

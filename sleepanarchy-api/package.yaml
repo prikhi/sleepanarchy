@@ -79,6 +79,7 @@ library:
         - mime-types
         - monad-logger
         - mtl
+        - pandoc
         - password
         - persistent
         - persistent-postgresql
@@ -122,12 +123,15 @@ executables:
         dependencies:
             - sleepanarchy-api
             - aeson
+            - containers
             - mtl
+            - pandoc
             - password
             - persistent
             - postgresql-simple
             - safe-exceptions
             - servant-auth-server
+            - skylighting-core
             - text
 
 tests:
