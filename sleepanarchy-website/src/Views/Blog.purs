@@ -34,6 +34,7 @@ import Halogen.HTML.Properties as HP
 import Html.Renderer.Halogen as RH
 import Router (Route(..), navLinkAttr)
 import Utils (showDate)
+import Views.MicroData as MD
 import Web.UIEvent.MouseEvent as ME
 
 -- | Render a list of blog posts with an optional page heading.
@@ -44,7 +45,11 @@ renderBlogPostList
   -> Maybe String
   -> HH.HTML w a
 renderBlogPostList linkAction listData pageHeader =
-  HH.div [ HP.classes [ H.ClassName "post-list" ] ]
+  HH.div
+    [ HP.classes [ H.ClassName "post-list" ]
+    , MD.itemScope
+    , MD.itemType MD.Blog
+    ]
     $ withHeader
     $ handleBlank
     $ intersperse (HH.hr [ HP.classes [ H.ClassName "post-separator" ] ])
@@ -65,20 +70,37 @@ renderBlogPostList linkAction listData pageHeader =
 
   renderBlogPost :: forall x. BlogPostListItem -> HH.HTML x a
   renderBlogPost bpld =
-    HH.div_
+    HH.div
+      [ MD.itemProp "blogPost"
+      , MD.itemScope
+      , MD.itemType MD.BlogPosting
+      ]
       [ HH.h2 [ HP.classes [ H.ClassName "post-title" ] ]
           [ postLink bpld bpld.title ]
       , renderPostMeta linkAction bpld
-      , HH.p [ HP.classes [ H.ClassName "post-description" ] ]
+      , HH.p
+          [ HP.classes [ H.ClassName "post-description" ]
+          , MD.itemProp "description"
+          ]
           [ RH.render_ bpld.description ]
       , renderTagList linkAction bpld.tags
-      , HH.small_ [ postLink bpld "Read More" ]
+      , renderReadMore bpld
+      , MD.sleepAnarchyAuthor
       ]
 
   postLink :: forall r x. { slug :: String | r } -> String -> HH.HTML x a
   postLink { slug } text =
-    HH.a (navLinkAttr linkAction $ ViewBlogPost slug)
-      [ HH.text text ]
+    HH.a (navLinkAttr linkAction (ViewBlogPost slug))
+      [ HH.span [ MD.itemProp "headline" ] [ HH.text text ]
+      , MD.metaUrl $ ViewBlogPost slug
+      ]
+
+  renderReadMore :: forall r x. { slug :: String | r } -> HH.HTML x a
+  renderReadMore { slug } =
+    HH.small_
+      [ HH.a (navLinkAttr linkAction (ViewBlogPost slug))
+          [ HH.text "Read More" ]
+      ]
 
 -- | Render the sidebar for the Blog pages.
 renderBlogSidebar
@@ -224,11 +246,18 @@ renderPostMeta navigateAction post = HH.div
   [ HP.classes [ H.ClassName "post-meta" ] ]
   [ HH.text $ "Posted in "
   , HH.a (navLinkAttr navigateAction (ViewBlogCategory post.category.slug))
-      [ HH.text post.category.title ]
-  , HH.text $ " on " <> showDate
-      post.publishedAt
+      [ HH.span [ MD.itemProp "articleSection" ] [ HH.text post.category.title ]
+      ]
+  , HH.text $ " on "
+  , HH.span [ MD.itemProp "datePublished" ]
+      [ HH.text $ showDate post.publishedAt ]
   , if post.publishedAt < post.updatedAt then
-      HH.text $ " | Updated on " <> showDate post.updatedAt
+      HH.span_
+        [ HH.text $ " | Updated on "
+        , HH.span [ MD.itemProp "dateModified" ]
+            [ HH.text $ showDate post.updatedAt ]
+
+        ]
     else HH.text ""
   ]
 
@@ -243,7 +272,7 @@ renderTagList navigateAction tags
         , HH.ul_ $ map
             ( \t -> HH.li_
                 [ HH.a (navLinkAttr navigateAction $ ViewBlogTag t)
-                    [ HH.text t ]
+                    [ HH.span [ MD.itemProp "keywords" ] [ HH.text t ] ]
                 ]
             )
             tags

@@ -99,7 +99,6 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
 ### CLIENT
 
 * General
-    * structured meta-data - Organization in header + BlogArticle in list/view
     * 404 page component - use to set title/description/prerender-code
     * Loading spinner(fade-in?)
     * Scroll to element in hash on initial load(only required on BlogPostView)

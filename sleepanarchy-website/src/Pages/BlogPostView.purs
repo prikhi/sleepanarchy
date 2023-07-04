@@ -22,6 +22,7 @@ import Network.RemoteData (RemoteData(..))
 import Router (Route)
 import Utils (renderRemoteData)
 import Views.Blog (renderBlogSidebar, renderPostMeta, renderTagList)
+import Views.MicroData as MD
 import Web.UIEvent.MouseEvent as ME
 
 page
@@ -74,11 +75,20 @@ handleAction = case _ of
 render :: forall w. State -> HH.HTML w Action
 render st = renderRemoteData st.apiData $ \resp ->
   HH.div [ HP.classes [ H.ClassName "blog-page" ] ]
-    [ HH.div [ HP.classes [ H.ClassName "post-details" ] ]
-        [ HH.h1 [ HP.classes [ H.ClassName "post-title" ] ]
+    [ HH.div
+        [ HP.classes [ H.ClassName "post-details" ]
+        , MD.itemScope
+        , MD.itemType MD.BlogPosting
+        ]
+        [ HH.h1
+            [ HP.classes [ H.ClassName "post-title" ], MD.itemProp "headline" ]
             [ HH.text resp.title ]
+        , MD.sleepAnarchyAuthor
         , renderPostMeta Navigate resp
-        , HH.div [ HP.classes [ H.ClassName "post-content" ] ]
+        , HH.div
+            [ HP.classes [ H.ClassName "post-content" ]
+            , MD.itemProp "articleBody"
+            ]
             [ RH.render_ resp.content
 
             ]

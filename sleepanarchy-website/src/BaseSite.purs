@@ -47,6 +47,7 @@ import Router
   , reverse
   )
 import Type.Proxy (Proxy(..))
+import Views.MicroData as MD
 import Web.UIEvent.MouseEvent as ME
 
 -- | The component representing the entire Halogen app. This has slots for each
@@ -250,7 +251,11 @@ renderHeader currentPage =
         ((navLinkAttr NavClick route) <> [ HP.classes (activePageClass route) ])
         [ HH.text text ]
   in
-    HH.nav [ HP.class_ $ HH.ClassName "header" ]
+    HH.nav
+      [ HP.class_ $ HH.ClassName "header"
+      , MD.itemScope
+      , MD.itemType MD.Organization
+      ]
       [ HH.div [ HP.class_ $ HH.ClassName "site-logo" ]
           [ navLink "Sleep Anarchy" Home ]
       , HH.div [ HP.class_ $ HH.ClassName "nav" ]
@@ -259,6 +264,9 @@ renderHeader currentPage =
               , HH.li_ [ navLink "Links" ViewLinks ]
               ]
           ]
+      , MD.metaItemProp "name" "Sleep Anarchy"
+      , MD.metaItemProp "sameAs" "https://github.com/prikhi/sleepanarchy"
+      , MD.metaUrl Home
       ]
   where
   isInPageHierarchy :: Route -> Boolean
