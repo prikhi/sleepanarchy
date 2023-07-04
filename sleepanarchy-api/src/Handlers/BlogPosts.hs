@@ -144,8 +144,9 @@ getBlogPostsArchive year month =
 getBlogPostsForTag :: (Cache m, DB m, Monad m) => Text -> m BlogPostList
 getBlogPostsForTag (slugifyTag -> tag) = do
     bplPosts <-
-        fmap (map (uncurry mkPostData)) . runDB $
-            rawSql
+        fmap (map (uncurry mkPostData))
+            . runDB
+            $ rawSql
                 [r|
             SELECT ??, ??
             FROM blog_post
@@ -205,6 +206,7 @@ getBlogPostList filters = do
 data BlogPostDetails = BlogPostDetails
     { bpdTitle :: Text
     , bpdSlug :: Text
+    , bpdDescription :: Text
     , bpdCreatedAt :: UTCTime
     , bpdUpdatedAt :: UTCTime
     , bpdPublishedAt :: UTCTime
@@ -226,12 +228,13 @@ instance ToSample BlogPostDetails where
             BlogPostDetails
                 "I am the title"
                 "i-am-the-title"
+                "<p>HTML-rendered short description of post</p>"
                 (UTCTime (fromGregorian 2022 04 20) 0)
                 (UTCTime (fromGregorian 2022 04 20) 0)
                 (UTCTime (fromGregorian 2022 04 20) 0)
                 ["Haskell", "PHP", "Package Management"]
                 (BlogCategoryData "Guides" "guides")
-                "I am the post's content"
+                "<p>I am the post's HTML content</p>"
                 (head $ map snd $ toSamples $ Proxy @BlogSidebarData)
 
 
@@ -250,6 +253,7 @@ getBlogPost slug =
                     BlogPostDetails
                         { bpdTitle = blogPostTitle
                         , bpdSlug = blogPostSlug
+                        , bpdDescription = blogPostDescriptionHtml
                         , bpdCreatedAt = blogPostCreatedAt
                         , bpdUpdatedAt = blogPostUpdatedAt
                         , bpdTags = mkTagList blogPostTags

@@ -110,14 +110,16 @@ listMediaDirectoryTests =
                         HM.fromList
                             [
                                 ( "dir1"
-                                , DirectoryNode . InMemoryDirectory $
-                                    HM.fromList
+                                , DirectoryNode
+                                    . InMemoryDirectory
+                                    $ HM.fromList
                                         [("f1", FileNode "file one")]
                                 )
                             ,
                                 ( "dir2"
-                                , DirectoryNode . InMemoryDirectory $
-                                    HM.fromList
+                                , DirectoryNode
+                                    . InMemoryDirectory
+                                    $ HM.fromList
                                         [ ("f1", FileNode "file one")
                                         , ("f2.png", FileNode "file two")
                                         , ("dir3", DirectoryNode emptyDirectory)
@@ -227,8 +229,9 @@ createMediaDirectoryTests =
                     ( HM.fromList
                         [
                             ( "nested"
-                            , DirectoryNode . InMemoryDirectory $
-                                HM.fromList
+                            , DirectoryNode
+                                . InMemoryDirectory
+                                $ HM.fromList
                                     [
                                         ( "in"
                                         , DirectoryNode $
@@ -270,8 +273,9 @@ uploadMediaFileTests =
                         HM.fromList
                             [
                                 ( "nested"
-                                , DirectoryNode . InMemoryDirectory $
-                                    HM.fromList
+                                , DirectoryNode
+                                    . InMemoryDirectory
+                                    $ HM.fromList
                                         [("path", DirectoryNode emptyDirectory)]
                                 )
                             ]
@@ -289,8 +293,9 @@ uploadMediaFileTests =
                     ( HM.fromList
                         [
                             ( "nested"
-                            , DirectoryNode . InMemoryDirectory $
-                                HM.fromList
+                            , DirectoryNode
+                                . InMemoryDirectory
+                                $ HM.fromList
                                     [
                                         ( "path"
                                         , DirectoryNode $
@@ -415,7 +420,9 @@ updateBlogPostTests =
                         uid
                         pid
                         emptyUpdate {abpuContent = Just "something"}
-                (blogPostUpdatedAt post,) . blogPostUpdatedAt . fromJust
+                (blogPostUpdatedAt post,)
+                    . blogPostUpdatedAt
+                    . fromJust
                     <$> runDB
                         (P.get pid)
             (initial, afterUpdate) <- expectRight result
@@ -475,7 +482,8 @@ updateBlogPostTests =
                 (uid, pid) <- runDB $ do
                     uid <- P.entityKey <$> makeUser
                     cid <- P.entityKey <$> makeBlogCategory "category"
-                    (uid,) . P.entityKey
+                    (uid,)
+                        . P.entityKey
                         <$> makeBlogPost
                             "title"
                             ""
@@ -495,7 +503,8 @@ updateBlogPostTests =
                 (uid, pid) <- runDB $ do
                     uid <- P.entityKey <$> makeUser
                     cid <- P.entityKey <$> makeBlogCategory "category"
-                    (uid,) . P.entityKey
+                    (uid,)
+                        . P.entityKey
                         <$> makeBlogPost
                             "title"
                             ""
@@ -613,7 +622,7 @@ getBlogPostTests =
                     void $ mkBlogPost "title" uid cid
                 getBlogPost "title"
             first errHTTPCode result @?= Left 404
-        , testCase "Returns HTML content" $ do
+        , testCase "Returns HTML content & description" $ do
             result <- testRunner $ do
                 now <- liftIO getCurrentTime
                 runDB $ do
@@ -625,10 +634,13 @@ getBlogPostTests =
                             { blogPostPublishedAt = Just now
                             , blogPostContent = "markdown content"
                             , blogPostContentHtml = "generated content"
+                            , blogPostDescription = "markdown description"
+                            , blogPostDescriptionHtml = "generated description"
                             }
                 getBlogPost "title"
             post <- expectRight result
             bpdContent post @?= "generated content"
+            bpdDescription post @?= "generated description"
         ]
 
 
