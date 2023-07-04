@@ -31,10 +31,21 @@ module App
   , class PageDataNotifier
   , pageDataReceived
   , mkPageDataNotifierEval
+  , SEOData
+  , adminSEOData
+  , class HasMetaElements
+  , getMetaElements
+  , class MetaTags
+  , setMetaTags
+  , MetaElements
+  , mkMetaElements
   ) where
 
 import Prelude
 
+import Affjax.StatusCode (StatusCode(..))
+import Affjax.Web (printError)
+import Api (ApiError(..))
 import Control.Monad.Reader
   ( class MonadAsk
   , class MonadReader
@@ -48,6 +59,7 @@ import Data.Argonaut
   , decodeJson
   , encodeJson
   , parseJson
+  , printJsonDecodeError
   , stringify
   )
 import Data.Argonaut.Decode.Generic (genericDecodeJson)
@@ -55,15 +67,16 @@ import Data.Argonaut.Encode.Generic (genericEncodeJson)
 import Data.Date (Date)
 import Data.Either (hush)
 import Data.Generic.Rep (class Generic)
-import Data.Maybe (Maybe, fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.Show.Generic (genericShow)
 import Data.String as String
 import Data.Time.Duration (Milliseconds)
-import Data.Traversable (for)
+import Data.Traversable (for, for_)
 import Effect (Effect)
 import Effect.Aff (Aff, Fiber, delay, error, forkAff, killFiber)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (class MonadEffect, liftEffect)
+import Effect.Exception (throwException)
 import Effect.Now (nowDate)
 import Effect.Ref (Ref)
 import Effect.Ref as Ref
@@ -71,21 +84,24 @@ import Foreign (unsafeToForeign)
 import Halogen as H
 import Halogen.Component (EvalSpec)
 import Halogen.Subscription (Emitter, Listener, SubscribeIO, notify)
-import Network.RemoteData
-  ( RemoteData
-  , isFailure
-  , isLoading
-  , isNotAsked
-  , isSuccess
-  )
+import Network.RemoteData (RemoteData(..), isLoading, isNotAsked)
 import Router (Route, reverse)
 import Routing.PushState (PushStateInterface)
 import Web.DOM (Element)
+import Web.DOM.Document as Document
+import Web.DOM.Element as Element
+import Web.DOM.Node (appendChild)
+import Web.DOM.ParentNode (QuerySelector(..), querySelector)
 import Web.Event.Event (preventDefault)
 import Web.File.File (File, toBlob)
 import Web.File.FileReader.Aff (readAsDataURL)
 import Web.HTML (window)
+import Web.HTML as HTML
+import Web.HTML.HTMLDocument as DocumentHTML
+import Web.HTML.HTMLElement as ElementHTML
+import Web.HTML.HTMLHeadElement as HeadHTML
 import Web.HTML.Window (localStorage, open)
+import Web.HTML.Window as Window
 import Web.Storage.Storage as Storage
 import Web.UIEvent.MouseEvent as ME
 
@@ -115,7 +131,8 @@ data AppEnv =
   Env
     { nav :: PushStateInterface
     , authStatus :: Ref AuthStatus
-    , pageDataSub :: SubscribeIO Unit
+    , pageDataSub :: SubscribeIO (Maybe SEOData)
+    , metaElements :: MetaElements
     }
 
 -- NAVIGATION
@@ -231,11 +248,22 @@ instance authHasAuthStatusEff ::
 
 -- PAGE DATA CHANGES
 
+-- | SEO-specific data for the page as a whole.
+type SEOData =
+  { pageTitle :: String
+  , metaDescription :: String
+  }
+
+-- | SEOData constructor for admin pages. Takes a page title & tosses away any
+-- | component state or request data.
+adminSEOData :: forall a b. String -> a -> b -> SEOData
+adminSEOData pageTitle _ _ = { pageTitle, metaDescription: "" }
+
 -- | Has access to halogen-subscription that emits messages when the data for
 -- | the current page has been fetched.
 class HasPageDataSubscription a where
-  pageDataEmitter :: a -> Emitter Unit
-  pageDataNotifier :: a -> Listener Unit
+  pageDataEmitter :: a -> Emitter (Maybe SEOData)
+  pageDataNotifier :: a -> Listener (Maybe SEOData)
 
 instance hasPageDataSubscriptionAppEnv :: HasPageDataSubscription AppEnv where
   pageDataEmitter (Env e) = e.pageDataSub.emitter
@@ -249,8 +277,10 @@ newtype PageDataDelayedNotif = PageDataDelayedNotif (Fiber Unit)
 
 class Monad m <= PageDataListener m where
   -- | Return an emitter that fires off the given action when a subscription
-  -- message is received. Use with 'subscribe'.
-  pageDataActionEmitter :: forall a. a -> m (Emitter a)
+  -- message is received. Use with 'subscribe'. The 'SEOData' will be present
+  -- when the message represents a page load and empty if the message was sent
+  -- after the timeout by 'notifyPageDataAfterMs'.
+  pageDataActionEmitter :: forall a. (Maybe SEOData -> a) -> m (Emitter a)
   -- | Fires a subscription message after the given number of milliseconds
   notifyPageDataAfterMs :: Milliseconds -> m PageDataDelayedNotif
   -- | Kill the thread that fires a message after a delay.
@@ -264,19 +294,19 @@ instance pageDataListenerHasPageDataSubscriptionEff ::
   ) =>
   PageDataListener m where
   pageDataActionEmitter action =
-    (action <$ _) <$> asks pageDataEmitter
+    (action <$> _) <$> asks pageDataEmitter
   notifyPageDataAfterMs ms = do
     notifier <- asks pageDataNotifier
     map PageDataDelayedNotif <<< liftAff $ forkAff $ do
       delay ms
-      liftEffect $ notify notifier unit
+      liftEffect $ notify notifier Nothing
   killDelayedPageDataNotif (PageDataDelayedNotif fiber) =
     liftAff $ killFiber (error "Manually Killed PageDataNotifier Fiber") fiber
 
 -- | Notifies listeners when a page has finished loading it's data.
 class Monad m <= PageDataNotifier m where
   -- | Send a message through the page-data-loaded subscription.
-  pageDataReceived :: m Unit
+  pageDataReceived :: SEOData -> m Unit
 
 instance pageDataNotifierHasPageDataSubscriptionEff ::
   ( HasPageDataSubscription env
@@ -284,13 +314,17 @@ instance pageDataNotifierHasPageDataSubscriptionEff ::
   , MonadEffect m
   ) =>
   PageDataNotifier m where
-  pageDataReceived =
-    asks pageDataNotifier >>= flip notify unit >>> liftEffect
+  pageDataReceived seoData =
+    asks pageDataNotifier >>= flip notify (Just seoData) >>> liftEffect
 
 -- | Build a Halogen eval function from an eval config. Wrap the 'handleAction'
 -- | function in the config & fire off a page data subscription message when the
 -- | 'apiData' field has changed from the NotAsked/Loading state to a
 -- | Success/Failure state.
+-- |
+-- | When the page data request is successful, we use the supplied function to
+-- | generate an `SEOData` for the subscription. When an error is received from
+-- | the API, we create a standardized `SEOData` with the error & message.
 -- |
 -- | TODO: Maybe we want a new 'Page' module & type with an associated function
 -- | that wraps 'mkComponent'. We could then move this into that module and do
@@ -298,14 +332,19 @@ instance pageDataNotifierHasPageDataSubscriptionEff ::
 -- | metadata. That may let us remove the 'PageDataNotifier' typeclass from the
 -- | individual page components as well.
 mkPageDataNotifierEval
-  :: forall state query action slots input output m e resp a
+  :: forall state query action slots input output m resp a
    . PageDataNotifier m
-  => EvalSpec { apiData :: RemoteData e resp | state } query action slots input
+  => ({ apiData :: RemoteData ApiError resp | state } -> resp -> SEOData)
+  -> EvalSpec { apiData :: RemoteData ApiError resp | state } query action slots
+       input
        output
        m
   -> H.HalogenQ query action input a
-  -> H.HalogenM { apiData :: RemoteData e resp | state } action slots output m a
-mkPageDataNotifierEval evalCfg =
+  -> H.HalogenM { apiData :: RemoteData ApiError resp | state } action slots
+       output
+       m
+       a
+mkPageDataNotifierEval mkSEOData evalCfg =
   H.mkEval evalCfg { handleAction = interceptEval evalCfg.handleAction }
   where
   -- Check apiData field for NotAsked/Loading -> Success/Failure changes. Call
@@ -313,8 +352,109 @@ mkPageDataNotifierEval evalCfg =
   interceptEval handler action = do
     initialState <- H.gets _.apiData
     handler action
-    finalState <- H.gets _.apiData
+    finalState <- H.get
+    let initialLoading = isNotAsked initialState || isLoading initialState
+    when initialLoading $ case finalState.apiData of
+      Success x -> H.lift $ pageDataReceived $ mkSEOData finalState x
+      Failure e -> H.lift $ pageDataReceived $ errorSEOData e
+      _ -> pure unit
+
+  errorSEOData :: ApiError -> SEOData
+  errorSEOData =
+    case _ of
+      HttpError e ->
+        { pageTitle: "HTTP Error"
+        , metaDescription: printError e
+        }
+      StatusCodeError { status: StatusCode code, body } ->
+        { pageTitle: show code <> " Error"
+        , metaDescription: body
+        }
+      JsonError e ->
+        { pageTitle: "JSON Decoding Error"
+        , metaDescription: printJsonDecodeError e
+        }
+
+-- SEO META TAGS
+
+-- | Pointers to various elements we need to manipulate during runtime for SEO
+-- | purposes.
+type MetaElements =
+  { document :: HTML.HTMLDocument
+  , metaDescription :: Element
+  , ogDescription :: Element
+  , ogSiteName :: Element
+  }
+
+-- | Initialize the MetaElements type by querying for their respective meta
+-- | tags in the document head.
+-- |
+-- | Any missing elements will be created. The ogSiteName will be set to `Sleep
+-- | Anarchy` while the other elements will not be modified.
+mkMetaElements :: Effect MetaElements
+mkMetaElements = do
+  document <- window >>= Window.document
+  headEl <- DocumentHTML.head document >>= case _ of
+    Just h -> pure h
+    Nothing -> do
+      headEl <- Document.createElement "head" $ DocumentHTML.toDocument document
+      appendChild (Element.toNode headEl) (DocumentHTML.toNode document)
+      maybe
+        (throwException $ error "created head not parsed as HTMLHeadElement")
+        (pure <<< HeadHTML.toHTMLElement) $
+        HeadHTML.fromElement headEl
+  metaDescription <- findOrCreateMetaElement document headEl "name"
+    "description"
+  ogDescription <- findOrCreateMetaElement document headEl "property"
+    "og:description"
+  ogSiteName <- findOrCreateMetaElement document headEl "property"
+    "og:site_name"
+  Element.setAttribute "content" "Sleep Anarchy" ogSiteName
+  pure { document, metaDescription, ogDescription, ogSiteName }
+  where
+  -- Find the `meta` tag with the given attribute name & value. Create it and
+  -- append it to the `head` tag if missing.
+  findOrCreateMetaElement
+    :: HTML.HTMLDocument
+    -> HTML.HTMLElement
+    -> String
+    -> String
+    -> Effect Element
+  findOrCreateMetaElement document headEl tag prop = do
+    let parent = ElementHTML.toParentNode headEl
+    mbEl <- querySelector
+      (QuerySelector $ "meta[" <> tag <> "=\"" <> prop <> "\"]")
+      parent
+    case mbEl of
+      Just e -> pure e
+      Nothing -> do
+        el <- Document.createElement "meta" $ DocumentHTML.toDocument document
+        Element.setAttribute tag prop el
+        appendChild (Element.toNode el) (ElementHTML.toNode headEl)
+        pure el
+
+class HasMetaElements a where
+  getMetaElements :: a -> MetaElements
+
+instance hasMetaElementsAppEnv :: HasMetaElements AppEnv where
+  getMetaElements (Env e) = e.metaElements
+
+-- | Manipulate the `title` & `meta` HTML tags.
+class Monad m <= MetaTags m where
+  setMetaTags :: SEOData -> m Unit
+
+instance metaTagsHasMetaElementsEff ::
+  ( HasMetaElements env
+  , MonadAsk env m
+  , MonadEffect m
+  ) =>
+  MetaTags m where
+  setMetaTags { pageTitle, metaDescription } = do
+    meta <- asks getMetaElements
     let
-      finishedLoading = (isNotAsked initialState || isLoading initialState) &&
-        (isSuccess finalState || isFailure finalState)
-    when finishedLoading $ H.lift pageDataReceived
+      fullTitle =
+        if String.null pageTitle then "Sleep Anarchy"
+        else pageTitle <> " | Sleep Anarchy"
+    liftEffect $ DocumentHTML.setTitle fullTitle meta.document
+    liftEffect $ for_ [ meta.metaDescription, meta.ogDescription ] $ \el ->
+      Element.setAttribute "content" metaDescription el

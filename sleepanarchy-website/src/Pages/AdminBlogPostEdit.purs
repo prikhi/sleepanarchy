@@ -13,7 +13,11 @@ import Api
   , renderApiError
   )
 import Api.Types (AdminBlogPost)
-import App (class PageDataNotifier, mkPageDataNotifierEval)
+import App
+  ( class PageDataNotifier
+  , SEOData
+  , mkPageDataNotifierEval
+  )
 import Data.Argonaut (Json, encodeJson, (:=?), (~>?))
 import Data.Array (foldr)
 import Data.Int as Int
@@ -30,9 +34,15 @@ page
 page = H.mkComponent
   { initialState
   , render
-  , eval: mkPageDataNotifierEval H.defaultEval
+  , eval: mkPageDataNotifierEval toSEOData H.defaultEval
       { handleAction = handleAction, initialize = Just Initialize }
   }
+  where
+  toSEOData :: State -> AdminBlogPost -> SEOData
+  toSEOData { postId } { title } =
+    { pageTitle: "Edit Blog Post #" <> show postId <> " - " <> title
+    , metaDescription: ""
+    }
 
 type State =
   { postId :: Int

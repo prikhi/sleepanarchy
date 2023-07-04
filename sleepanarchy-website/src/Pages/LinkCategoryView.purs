@@ -9,6 +9,7 @@ import Api.Types (LinkCategoryMap(..))
 import App
   ( class Navigation
   , class PageDataNotifier
+  , SEOData
   , mkPageDataNotifierEval
   , newUrl
   , openInNewTab
@@ -32,9 +33,17 @@ page
 page = H.mkComponent
   { initialState
   , render
-  , eval: mkPageDataNotifierEval H.defaultEval
+  , eval: mkPageDataNotifierEval toSEOData H.defaultEval
       { handleAction = handleAction, initialize = Just Initialize }
   }
+  where
+  toSEOData :: State -> LinkCategoryMap -> SEOData
+  toSEOData _ (LinkCategoryMap { category }) =
+    { pageTitle: category <> " Links"
+    , metaDescription: "Links to Books, Talks, Courses, & Articles about "
+        <> category
+        <> "."
+    }
 
 type State =
   { apiData :: RemoteData ApiError LinkCategoryMap

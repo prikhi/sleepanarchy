@@ -9,6 +9,7 @@ import Api.Types (BlogPostList)
 import App
   ( class Navigation
   , class PageDataNotifier
+  , SEOData
   , mkPageDataNotifierEval
   , newUrl
   )
@@ -32,8 +33,15 @@ page =
   H.mkComponent
     { initialState
     , render
-    , eval: mkPageDataNotifierEval H.defaultEval
+    , eval: mkPageDataNotifierEval toSEOData H.defaultEval
         { handleAction = handleAction, initialize = Just Initialize }
+    }
+  where
+  toSEOData :: State -> BlogPostList -> SEOData
+  toSEOData _ _ =
+    { pageTitle: "Blog"
+    , metaDescription:
+        "Guides, blog posts, & a link collection on Haskell, Programming, System Administration, & Life."
     }
 
 type State =

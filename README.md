@@ -99,11 +99,12 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
 ### CLIENT
 
 * General
-    * Page Title, SEO, structured meta-data
-        * On index.html for initial load
-        * Update on page changes(send effect after api data loads?)
+    * structured meta-data - Organization in header + BlogArticle in list/view
+    * 404 page component - use to set title/description/prerender-code
     * Loading spinner(fade-in?)
-    * Scroll to top of page or hash on page/url change.
+    * Scroll to element in hash on initial load(only required on BlogPostView)
+    * Scroll to top of page or to hash on page/url change.
+    * Set prerender.io meta element after page data load.
     * Helpers for `pageDataReceived` on init when component has no `apiData`
       field or no action for `initialize`.
 * Blog Posts

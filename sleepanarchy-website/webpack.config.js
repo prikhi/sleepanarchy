@@ -59,6 +59,8 @@ class SpagoWatchWebpackPlugin {
 
 module.exports = (env, _) => {
     const isProduction = !env.WEBPACK_SERVE;
+    const metaDescription =
+        "Guides, blog posts, & a link collection on Haskell, Programming, System Administration, & Life.";
     return {
         mode: "development",
         entry: {
@@ -102,6 +104,15 @@ module.exports = (env, _) => {
                 meta: {
                     "google-site-verification":
                         "mw_vy86UEcJ1tGnIBEG_hs77Zy3mo6VYsRYe_FB7Igg",
+                    description: metaDescription,
+                    "og:description": {
+                        property: "og:description",
+                        content: metaDescription,
+                    },
+                    "og:site_name": {
+                        property: "og:site_name",
+                        content: "Sleep Anarchy",
+                    },
                 },
             }),
             new SubresourceIntegrityPlugin({

@@ -9,10 +9,10 @@ import Api.Types (BlogPostList)
 import App
   ( class Navigation
   , class PageDataNotifier
+  , SEOData
   , mkPageDataNotifierEval
   , newUrl
   )
-import Data.Array (mapMaybe)
 import Data.Array as Array
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String as String
@@ -21,7 +21,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Network.RemoteData (RemoteData(..), toMaybe)
 import Router (Route)
-import Utils (renderRemoteData)
+import Utils (renderRemoteData, unslugify)
 import Views.Blog (renderBlogPostList, renderBlogSidebar)
 import Web.UIEvent.MouseEvent as ME
 
@@ -34,9 +34,18 @@ page
 page = H.mkComponent
   { initialState
   , render
-  , eval: mkPageDataNotifierEval H.defaultEval
+  , eval: mkPageDataNotifierEval toSEOData H.defaultEval
       { handleAction = handleAction, initialize = Just Initialize }
   }
+  where
+  toSEOData :: State -> BlogPostList -> SEOData
+  toSEOData st _ =
+    let
+      tag = unslugify st.slug
+    in
+      { pageTitle: "Tag: " <> tag
+      , metaDescription: "Blog posts tagged with " <> tag
+      }
 
 type Input = String
 
@@ -80,14 +89,6 @@ handleAction = case _ of
 render :: forall m. State -> H.ComponentHTML Action () m
 render { apiData, slug } = renderRemoteData apiData $ \resp ->
   let
-    unslugify =
-      String.split (String.Pattern "-")
-        >>> mapMaybe
-          ( \word ->
-              String.uncons word <#> \{ head, tail } ->
-                String.toUpper (String.fromCodePointArray [ head ]) <> tail
-          )
-        >>> String.joinWith " "
     headerText = Just $ "Tag: " <> unslugify slug
   in
     HH.div [ HP.classes [ H.ClassName "blog-page" ] ]

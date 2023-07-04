@@ -74,7 +74,8 @@ handleAction
   -> H.HalogenM State Action () o m Unit
 handleAction = case _ of
   Initialize ->
-    H.lift pageDataReceived
+    H.lift $ pageDataReceived
+      { pageTitle: "Login", metaDescription: "Login to the Admin Site" }
   SetUsername str ->
     H.modify_ _ { username = str }
   SetPassword str ->

@@ -96,6 +96,7 @@ type BlogPostListItem =
 type BlogPostDetails =
   { title :: String
   , content :: String
+  , description :: String
   , createdAt :: ApiDateTime
   , updatedAt :: ApiDateTime
   , publishedAt :: ApiDateTime

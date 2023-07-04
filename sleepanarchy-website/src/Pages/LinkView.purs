@@ -9,6 +9,7 @@ import Api.Types (RootLinkCategories)
 import App
   ( class Navigation
   , class PageDataNotifier
+  , SEOData
   , mkPageDataNotifierEval
   , newUrl
   , openInNewTab
@@ -33,9 +34,16 @@ page
 page = H.mkComponent
   { initialState
   , render
-  , eval: mkPageDataNotifierEval H.defaultEval
+  , eval: mkPageDataNotifierEval toSEOData H.defaultEval
       { handleAction = handleAction, initialize = Just Initialize }
   }
+  where
+  toSEOData :: State -> RootLinkCategories -> SEOData
+  toSEOData _ _ =
+    { pageTitle: "Links"
+    , metaDescription:
+        "Links to Books, Talks, Courses, & Articles on Computers, Math, & Life."
+    }
 
 type State =
   { apiData :: RemoteData ApiError RootLinkCategories

@@ -7,16 +7,19 @@ import App
   ( class Auth
   , class FileUpload
   , class GetTime
+  , class MetaTags
   , class Navigation
   , class PageDataListener
   , class PageDataNotifier
   , PageDataDelayedNotif
+  , SEOData
   , getToday
   , isLoggedIn
   , killDelayedPageDataNotif
   , newUrl
   , notifyPageDataAfterMs
   , pageDataActionEmitter
+  , setMetaTags
   )
 import BaseAdmin as BaseAdmin
 import Data.Date (Date, canonicalDate, year)
@@ -24,6 +27,7 @@ import Data.Enum (fromEnum)
 import Data.Foldable (for_)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Time.Duration (Milliseconds(..))
+import Data.Traversable (traverse_)
 import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.HTML as HH
@@ -57,6 +61,7 @@ component
   => Navigation m
   => PageDataListener m
   => PageDataNotifier m
+  => MetaTags m
   => H.Component Query Route o m
 component = H.mkComponent
   { initialState: initial
@@ -79,7 +84,7 @@ data Action
   | NavClick Route ME.MouseEvent
   -- | Clear the stored previous page, forcing us to render the current page,
   -- | whether the data is loaded or not.
-  | ClearPreviousPage
+  | ClearPreviousPage (Maybe SEOData)
 
 type Slots =
   ( homePageSlot :: forall query. H.Slot query Void Unit
@@ -181,6 +186,7 @@ handleAction
    . GetTime m
   => Navigation m
   => PageDataListener m
+  => MetaTags m
   => Action
   -> H.HalogenM State Action Slots o m Unit
 handleAction = case _ of
@@ -190,10 +196,11 @@ handleAction = case _ of
     H.modify_ _ { currentDate = today }
   NavClick route event ->
     H.lift $ newUrl route $ Just event
-  ClearPreviousPage -> do
+  ClearPreviousPage mbSEOData -> do
     mbDelayedNotif <- H.gets _.loadingWait
     H.lift $ for_ mbDelayedNotif killDelayedPageDataNotif
     H.modify_ _ { previousPage = Nothing, loadingWait = Nothing }
+    H.lift $ traverse_ setMetaTags mbSEOData
 
 -- | Render the Header & Page Content.
 -- |
@@ -299,6 +306,8 @@ renderFooter currentDate =
   currentYear = show (fromEnum $ year currentDate)
 
 -- | Render the correct slot for each Route.
+--
+-- TODO: Add 404 page component so we can set title/description/statuscode
 renderPage
   :: forall a m
    . ApiRequest m

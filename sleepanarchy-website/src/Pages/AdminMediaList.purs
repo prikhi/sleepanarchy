@@ -18,6 +18,7 @@ import App
   ( class FileUpload
   , class Navigation
   , class PageDataNotifier
+  , SEOData
   , clearInputValue
   , encodeBase64
   , mkPageDataNotifierEval
@@ -49,9 +50,15 @@ page
 page = H.mkComponent
   { initialState
   , render
-  , eval: mkPageDataNotifierEval H.defaultEval
+  , eval: mkPageDataNotifierEval toSEOData H.defaultEval
       { handleAction = handleAction, initialize = Just Initialize }
   }
+  where
+  toSEOData :: State -> AdminMediaList -> SEOData
+  toSEOData { folderPath } _ =
+    { pageTitle: "Media - /" <> String.joinWith "/" folderPath
+    , metaDescription: ""
+    }
 
 type State =
   { folderPath :: Array String

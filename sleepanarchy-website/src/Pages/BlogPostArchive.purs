@@ -9,13 +9,14 @@ import Api.Types (BlogPostList)
 import App
   ( class Navigation
   , class PageDataNotifier
+  , SEOData
   , mkPageDataNotifierEval
   , newUrl
   )
 import Data.Date (Month, Year)
 import Data.Enum (fromEnum)
 import Data.Maybe (Maybe(..))
-import Data.Tuple (Tuple(..), fst, snd)
+import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
@@ -34,9 +35,18 @@ page
 page = H.mkComponent
   { initialState
   , render
-  , eval: mkPageDataNotifierEval H.defaultEval
+  , eval: mkPageDataNotifierEval toSEOData H.defaultEval
       { handleAction = handleAction, initialize = Just Initialize }
   }
+  where
+  toSEOData :: State -> BlogPostList -> SEOData
+  toSEOData st _ =
+    let
+      dateStr = renderDate st.date
+    in
+      { pageTitle: "Post Archive: " <> dateStr
+      , metaDescription: "Blog posts published in " <> dateStr <> "."
+      }
 
 type Input = Tuple Year Month
 
@@ -70,10 +80,12 @@ handleAction = case _ of
 render :: forall m. State -> H.ComponentHTML Action () m
 render { apiData, date } = renderRemoteData apiData $ \resp ->
   let
-    headerText = Just $ "Post Archive: " <> show (snd date) <> ", " <> show
-      (fromEnum $ fst date)
+    headerText = Just $ "Post Archive: " <> renderDate date
   in
     HH.div [ HP.classes [ H.ClassName "blog-page" ] ]
       [ renderBlogPostList Navigate resp headerText
       , renderBlogSidebar Navigate resp.sidebar
       ]
+
+renderDate :: Tuple Year Month -> String
+renderDate (Tuple year month) = show month <> ", " <> show (fromEnum year)

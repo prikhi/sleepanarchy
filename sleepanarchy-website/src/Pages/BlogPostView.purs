@@ -9,6 +9,7 @@ import Api.Types (BlogPostDetails)
 import App
   ( class Navigation
   , class PageDataNotifier
+  , SEOData
   , mkPageDataNotifierEval
   , newUrl
   )
@@ -33,8 +34,14 @@ page =
   H.mkComponent
     { initialState
     , render
-    , eval: mkPageDataNotifierEval H.defaultEval
+    , eval: mkPageDataNotifierEval toSEOData H.defaultEval
         { handleAction = handleAction, initialize = Just Initialize }
+    }
+  where
+  toSEOData :: State -> BlogPostDetails -> SEOData
+  toSEOData _ { title, description, category } =
+    { pageTitle: title <> " - " <> category.title
+    , metaDescription: description
     }
 
 type State =

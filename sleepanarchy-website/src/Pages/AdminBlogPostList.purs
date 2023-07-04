@@ -7,6 +7,7 @@ import Api.Types (AdminBlogPostList, AdminBlogPostListItem)
 import App
   ( class Navigation
   , class PageDataNotifier
+  , adminSEOData
   , mkPageDataNotifierEval
   , newUrl
   )
@@ -28,7 +29,7 @@ page
 page = H.mkComponent
   { initialState
   , render
-  , eval: mkPageDataNotifierEval H.defaultEval
+  , eval: mkPageDataNotifierEval (adminSEOData "Blog Posts") H.defaultEval
       { handleAction = handleAction, initialize = Just Initialize }
   }
 

@@ -57,7 +57,8 @@ handleAction = case _ of
   Initialize -> do
     isAuthed <- H.lift isLoggedIn
     H.modify_ $ const isAuthed
-    H.lift pageDataReceived
+    H.lift $ pageDataReceived
+      { pageTitle: "Admin Dashboard", metaDescription: "" }
   NavigateTo route ev -> do
     H.lift $ newUrl route $ Just ev
   LogOut -> H.lift $ do

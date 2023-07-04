@@ -2,7 +2,7 @@ module Main (main) where
 
 import Prelude
 
-import App (AppEnv(..), initializeAuthStatus, runAppM)
+import App (AppEnv(..), initializeAuthStatus, mkMetaElements, runAppM)
 import BaseSite as BaseSite
 import Data.Either (fromRight)
 import Data.Maybe (Maybe)
@@ -25,7 +25,8 @@ main = do
   let initialRoute = fromRight NotFound $ match router initialPath
   authStatus <- initializeAuthStatus
   pageDataSub <- create
-  let env = Env { nav, authStatus, pageDataSub }
+  metaElements <- mkMetaElements
+  let env = Env { nav, authStatus, pageDataSub, metaElements }
   HA.runHalogenAff do
     liftEffect $ info "Sleepanarchy.com Purescript Client Starting Up..."
     body <- HA.awaitBody
