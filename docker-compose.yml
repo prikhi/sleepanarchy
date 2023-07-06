@@ -10,10 +10,12 @@ services:
     image: lysergia/sleepanarchy-nginx:latest
     networks:
       - frontend
+    # TODO: map 80:80 & 443:443
     ports:
       - "8080:80"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     volumes:
       - media:/www/media:ro
   api:
@@ -21,11 +23,10 @@ services:
       context: .
       dockerfile: deploy/api/Dockerfile
     image: lysergia/sleepanarchy-api:latest
+    tty: true
     networks:
       - frontend
       - backend
-    expose:
-      - 9001
     environment:
       - ENVIRONMENT=Production
       - DB_HOST=db
@@ -33,19 +34,23 @@ services:
     volumes:
       - media:/srv/media:rw
     depends_on:
-      - db
+      db:
+        condition: service_healthy
   db:
     image: postgres:15
     networks:
       - backend
-    expose:
-      - 5432
     environment:
       - POSTGRES_USER=sleepanarchy-blog
       - POSTGRES_DB=sleepanarchy-blog
       - POSTGRES_HOST_AUTH_METHOD=trust
     volumes:
       - db:/var/lib/postgresql/data:rw
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sleepanarchy-blog -d sleepanarchy-blog"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 networks:
   frontend:

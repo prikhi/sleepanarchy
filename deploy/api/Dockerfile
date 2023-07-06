@@ -25,12 +25,12 @@ FROM haskell:9.4.5-buster AS project-builder
 
 WORKDIR /src
 
+COPY --from=dependency-builder /root/.stack /root/.stack
+COPY --from=dependency-builder /src/.stack-work/ /src/.stack-work/
+
 RUN apt-get update && apt-get install -yqq libpq-dev
 
-COPY --from=dependency-builder /root/.stack /root/.stack
-
 COPY ./sleepanarchy-api /src
-COPY --from=dependency-builder /src/.stack-work/ /src/.stack-work/
 RUN stack install --system-ghc --no-install-ghc
 
 RUN mkdir -p /dist
@@ -40,9 +40,15 @@ RUN mv $HOME/.local/bin/* /dist/
 # Final minimal image
 FROM debian:buster-slim
 
-RUN apt-get update && apt-get install -yqq libpq-dev
-
 COPY --from=sql-migrate-builder /dist/sql-migrate /bin/
 COPY --from=project-builder /dist/* /bin/
 
-ENTRYPOINT ["sleepanarchy-api"]
+RUN apt-get update && apt-get install -yqq libpq-dev curl
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=1s --retries=2 CMD [ "curl", "http://localhost:9001/blog/posts" ]
+
+WORKDIR /app
+COPY ./sleepanarchy-api/dbconfig.yml .
+COPY ./sleepanarchy-api/migrations/ ./migrations/
+
+CMD ["sleepanarchy-api"]

@@ -77,6 +77,7 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
     * Haskell `manage.hs` script for running server & client watchers in one
       terminal(see SESE website repo).
     * Migration script from old django DB to new DB
+    * Clean shutdowns using signals
 * Blog Posts
     * Paginated list route?
     * Prev/Next links on details page
@@ -141,10 +142,10 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
     * nginx uses prerender for server side rendering
     * ~~api server has postgres~~
     * ~~use api server container to run db migrations, mgmt commands~~
-    * commands to remotely update prod via SSH
+    * makefile commands to remotely update prod via SSH
     * keep server JWT key secret
     * support DB password auth - in backend code & compose file
-    * health commands for docker
+    * ~~health commands for docker~~
 
 
 ## LICENSE
