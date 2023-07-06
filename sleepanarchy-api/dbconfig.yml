@@ -6,8 +6,9 @@ defaults: &defaults
   dir: migrations
   table: migrations
 
-production:
-  <<: *defaults
-
 development:
   <<: *defaults
+
+production:
+  <<: *defaults
+  datasource: host=db dbname=sleepanarchy-blog user=sleepanarchy-blog sslmode=disable

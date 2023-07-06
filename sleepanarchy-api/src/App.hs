@@ -121,11 +121,12 @@ mkConfig = do
     let cfgLoggingMiddleware = case env of
             Development -> logStdoutDev
             Production -> id
+    connStr <- dbConnectionString
     cfgDbPool <- case env of
         Development ->
-            runStdoutLoggingT $ createPostgresqlPool dbConnectionString 2
+            runStdoutLoggingT $ createPostgresqlPool connStr 2
         Production ->
-            runNoLoggingT $ createPostgresqlPool dbConnectionString 20
+            runNoLoggingT $ createPostgresqlPool connStr 20
     cfgCaches <- flip runSqlPool cfgDbPool $ do
         migrationsDue <- showMigration migrateAll
         unless (null migrationsDue) $ liftIO $ do
@@ -157,9 +158,19 @@ mkConfig = do
     cfgMediaDirectory <- determineMediaDirectory
     return Config {cfgEnv = env, ..}
   where
-    dbConnectionString :: ConnectionString
-    dbConnectionString =
-        "host=localhost user=sleepanarchy-blog dbname=sleepanarchy-blog"
+    -- Determine the database hostname from the @DB_HOST@ env var, falling
+    -- back to @localhost@. Then assemble & return the connection string.
+    --
+    -- TODO: abstract this flow of lookup->print stderr->default?
+    dbConnectionString :: IO ConnectionString
+    dbConnectionString = do
+        host <-
+            lookupEnv "DB_HOST" >>= \case
+                Nothing ->
+                    hPutStrLn stderr "`DB_HOST` environmental variable not set - using localhost"
+                        >> return "localhost"
+                Just x -> return $ BC.pack x
+        return $ "host=" <> host <> " user=sleepanarchy-blog dbname=sleepanarchy-blog"
     -- Determine & create the media directory if necessary. Checks the
     -- @MEDIA_DIRECTORY@ environment variable, defaulting to @./media@ if
     -- not defined. Exits with an error if the media directory is actually
