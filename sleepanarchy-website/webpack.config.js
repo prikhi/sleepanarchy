@@ -8,7 +8,7 @@ const ImageMinimizerWebpackPlugin = require("image-minimizer-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const RobotsTxtPlugin = require("robotstxt-webpack-plugin");
 const { SubresourceIntegrityPlugin } = require("webpack-subresource-integrity");
-const WebpackFavicons = require("webpack-favicons");
+const FaviconsWebpackPlugin = require("favicons-webpack-plugin");
 
 class SpagoWatchWebpackPlugin {
     watchPid = null;
@@ -152,15 +152,19 @@ module.exports = (env, _) => {
                 sitemap: "https://sleepanarchy.com/sitemap.xml",
                 host: "https://sleepanarchy.com",
             }),
-            new WebpackFavicons({
-                src: "src/favicon.svg",
-                appName: "Sleep Anarchy",
-                background: "#1b1d1e",
-                theme_color: "#1b1d1e",
-                icons: {
-                    favicons: true,
-                    android: true,
-                    appleIcon: true,
+            new FaviconsWebpackPlugin({
+                logo: "src/favicon.svg",
+                prefix: "",
+                inject: true,
+                favicons: {
+                    appName: "Sleep Anarchy",
+                    background: "#1b1d1e",
+                    theme_color: "#1b1d1e",
+                    icons: {
+                        favicons: true,
+                        android: true,
+                        appleIcon: true,
+                    },
                 },
             }),
             new ImageMinimizerWebpackPlugin({
