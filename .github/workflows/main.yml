@@ -168,3 +168,36 @@ jobs:
           cache-dependency-path: sleepanarchy-website/package-lock.json
       # Dev builds until we can fix SRI plugin on GitHub(prod builds work fine locally)
       - run: cd sleepanarchy-website && npm ci && npx purs-tidy check src && npx spago install && npm run build -- --mode development
+
+  # Build & Push the docker images
+  docker-images:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 2
+      matrix:
+        image:
+          - api
+          - nginx
+    steps:
+      - uses: actions/checkout@v3
+      - name: Pull Commit Hash
+        id: commit
+        uses: pr-mpt/actions-commit-hash@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          file: deploy/${{ matrix.image }}/Dockerfile
+          context: .
+          push: true
+          tags: lysergia/sleepanarchy-${{ matrix.image }}:latest,lysergia/sleepanarchy-${{ matrix.image }}:${{ steps.commit.outputs.hash }}
+          cache-from: type=gha,scope=${{ vars.GITHUB_REF_NAME }}-${{ matrix.image }}
+          cache-to: type=gha,scope=${{ vars.GITHUB_REF_NAME }}-${{ matrix.image }},mode=max

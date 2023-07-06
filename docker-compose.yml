@@ -1,0 +1,56 @@
+---
+
+version: '3'
+
+services:
+  nginx:
+    build:
+      context: .
+      dockerfile: deploy/nginx/Dockerfile
+    image: lysergia/sleepanarchy-nginx:latest
+    networks:
+      - frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    volumes:
+      - media:/www/media:ro
+  api:
+    build:
+      context: .
+      dockerfile: deploy/api/Dockerfile
+    image: lysergia/sleepanarchy-api:latest
+    networks:
+      - frontend
+      - backend
+    expose:
+      - 9001
+    environment:
+      - ENVIRONMENT=Production
+      - DB_HOST=db
+      - MEDIA_DIRECTORY=/srv/media
+    volumes:
+      - media:/srv/media:rw
+    depends_on:
+      - db
+  db:
+    image: postgres:15
+    networks:
+      - backend
+    expose:
+      - 5432
+    environment:
+      - POSTGRES_USER=sleepanarchy-blog
+      - POSTGRES_DB=sleepanarchy-blog
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    volumes:
+      - db:/var/lib/postgresql/data:rw
+
+networks:
+  frontend:
+  backend:
+
+volumes:
+  db:
+  media:

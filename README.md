@@ -106,6 +106,7 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
     * Set prerender.io meta element after page data load.
     * Helpers for `pageDataReceived` on init when component has no `apiData`
       field or no action for `initialize`.
+    * Throw my github/gitlab/linkedin in footer as icons
 * Blog Posts
     * published date formatting(X days ago)
     * Add feeds to sidebar? Or footer? Or both?
@@ -130,7 +131,20 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
 
 ### DEPLOY
 
-* Dockerize server + prerender + nginx into containers?
+* Dockerize server + prerender + nginx into containers
+    * ~~CI builds images on release/tagged commits, pushes to dockerhub~~
+    * docker compose instruments services
+    * ~~nginx only thing exposed to outside world~~
+    * ~~nginx proxies API server & shares media directory with it~~
+    * ~~nginx serves frontend prod builds~~
+    * nginx uses certbot for SSL certs
+    * nginx uses prerender for server side rendering
+    * ~~api server has postgres~~
+    * ~~use api server container to run db migrations, mgmt commands~~
+    * commands to remotely update prod via SSH
+    * keep server JWT key secret
+    * support DB password auth - in backend code & compose file
+    * health commands for docker
 
 
 ## LICENSE
