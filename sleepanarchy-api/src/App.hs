@@ -55,7 +55,7 @@ import Data.Maybe (fromMaybe)
 import Data.Pool (Pool)
 import Database.Persist.Postgresql (ConnectionString, createPostgresqlPool)
 import Database.Persist.Sql (SqlBackend, SqlPersistT, runSqlPool, showMigration)
-import Network.Wai.Middleware.RequestLogger (logStdoutDev)
+import Network.Wai.Middleware.RequestLogger (logStdout, logStdoutDev)
 import Servant (Application, ServerError, throwError)
 import Servant.Auth.Server
     ( CookieSettings (..)
@@ -121,7 +121,7 @@ mkConfig = do
     env <- fromMaybe Development . (>>= readMaybe) <$> lookupEnv "ENVIRONMENT"
     let cfgLoggingMiddleware = case env of
             Development -> logStdoutDev
-            Production -> id
+            Production -> logStdout
     connStr <- dbConnectionString
     when (env == Production)
         $ threadDelay 500_000
