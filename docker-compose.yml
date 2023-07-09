@@ -12,18 +12,33 @@ services:
       - frontend
     # TODO: map 80:80 & 443:443
     ports:
-      - "8080:80"
+      - "443:443"
+      - "80:80"
     depends_on:
       api:
         condition: service_healthy
+      prerender:
+        condition: service_healthy
     volumes:
       - media:/www/media:ro
+  prerender:
+    build:
+      context: .
+      dockerfile: deploy/prerender/Dockerfile
+    image: lysergia/sleepanarchy-prerender:latest
+    hostname: prerender
+    networks:
+      - frontend
+    environment:
+      CACHE_MAXSIZE: 1000
+      CACHE_TTL: 1800
   api:
     build:
       context: .
       dockerfile: deploy/api/Dockerfile
     image: lysergia/sleepanarchy-api:latest
     tty: true
+    hostname: api
     networks:
       - frontend
       - backend
@@ -38,6 +53,7 @@ services:
         condition: service_healthy
   db:
     image: postgres:15
+    hostname: db
     networks:
       - backend
     environment:

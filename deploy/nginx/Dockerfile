@@ -14,6 +14,10 @@ RUN npm run build
 
 RUN mv dist /
 
+RUN mkdir /ssl
+
+RUN openssl req -x509 -newkey rsa:4096 -keyout /ssl/key.pem -out /ssl/cert.pem -sha256 -days 3650 -nodes -subj "/C=XX/ST=StateName/L=CityName/O=CompanyName/OU=CompanySectionName/CN=localhost"
+
 
 # Final minimal image
 FROM nginx:1-alpine
@@ -21,6 +25,10 @@ FROM nginx:1-alpine
 RUN apk --no-cache add curl
 
 RUN rm /etc/nginx/conf.d/default.conf
+
+# Self-signed cert, directory will be overriden by certbot if enabled
+RUN mkdir -p /etc/nginx/ssl
+COPY --from=builder /ssl/* /etc/nginx/ssl/
 
 COPY /deploy/nginx/nginx.conf /etc/nginx/conf.d/sleepanarchy.conf
 COPY --from=builder /dist/* /www/

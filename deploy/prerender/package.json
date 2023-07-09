@@ -1,0 +1,15 @@
+{
+  "name": "sleepanarchy-prerender",
+  "version": "1.0.0",
+  "description": "Prerender.io Server for Sleepanarchy.com",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Pavan Rikhi",
+  "license": "GPL-3.0+",
+  "dependencies": {
+    "prerender": "^5.20.2",
+    "prerender-memory-cache": "^1.0.2"
+  }
+}

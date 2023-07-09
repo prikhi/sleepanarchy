@@ -139,13 +139,18 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
     * ~~nginx proxies API server & shares media directory with it~~
     * ~~nginx serves frontend prod builds~~
     * nginx uses certbot for SSL certs
-    * nginx uses prerender for server side rendering
+    * ~~nginx uses prerender for server side rendering~~
     * ~~api server has postgres~~
     * ~~use api server container to run db migrations, mgmt commands~~
     * makefile commands to remotely update prod via SSH
     * keep server JWT key secret
     * support DB password auth - in backend code & compose file
     * ~~health commands for docker~~
+* Allow cycling API server w/o restarting nginx. This occurs because of the
+  `depends_on` from nginx to api. We need this right now because nginx fails to
+  start if it can't reach the api or prerender hosts. Maybe a way around this
+  is using `set` for the hostnames in nginx, but my first attempt caused this
+  to throw "not initialized" errors.
 
 
 ## LICENSE
