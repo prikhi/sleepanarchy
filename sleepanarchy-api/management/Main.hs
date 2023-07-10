@@ -150,7 +150,7 @@ printSyntaxCss =
     tokenStyles =
         M.fromList $
             catMaybes
-                [(t,) <$> tokenStyle t | SkyToken t <- [minBound .. maxBound]]
+                [(t,) <$> tokenStyle t | t <- [minBound .. maxBound]]
     color :: String -> Maybe TokenStyle
     color c = Just $ defStyle {tokenColor = toColorS c}
     bg :: String -> Maybe TokenStyle -> Maybe TokenStyle
@@ -223,13 +223,3 @@ printSyntaxCss =
             bold $ bg "#232526" $ color "#F92672"
         NormalTok ->
             Nothing
-
-
--- | Custom type for deriving "Bounded TokenType".
-newtype SkyToken = SkyToken TokenType
-    deriving newtype (Enum)
-
-
-instance Bounded SkyToken where
-    minBound = SkyToken KeywordTok
-    maxBound = SkyToken NormalTok
