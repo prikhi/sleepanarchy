@@ -51,4 +51,4 @@ WORKDIR /app
 COPY ./sleepanarchy-api/dbconfig.yml .
 COPY ./sleepanarchy-api/migrations/ ./migrations/
 
-CMD ["sleepanarchy-api"]
+CMD ["sh", "-c", "sleep 2 && /bin/sleepanarchy-api"]

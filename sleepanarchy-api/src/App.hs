@@ -35,7 +35,6 @@ module App
     , Cache (..)
     ) where
 
-import Control.Concurrent (threadDelay)
 import Control.Concurrent.STM
     ( TVar
     , atomically
@@ -45,7 +44,7 @@ import Control.Concurrent.STM
     )
 import Control.Exception.Safe (MonadCatch, MonadThrow, try)
 import Control.Lens ((^.))
-import Control.Monad (unless, when, (>=>))
+import Control.Monad (unless, (>=>))
 import Control.Monad.Except (ExceptT, MonadError)
 import Control.Monad.Logger (NoLoggingT (runNoLoggingT), runStdoutLoggingT)
 import Control.Monad.Reader (MonadIO (..), MonadReader, ReaderT, asks)
@@ -123,8 +122,6 @@ mkConfig = do
             Development -> logStdoutDev
             Production -> logStdout
     connStr <- dbConnectionString
-    when (env == Production)
-        $ threadDelay 500_000
     cfgDbPool <- case env of
         Development ->
             runStdoutLoggingT $ createPostgresqlPool connStr 2
