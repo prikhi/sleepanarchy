@@ -33,4 +33,4 @@ COPY --from=builder /ssl/* /etc/nginx/ssl/
 COPY /deploy/nginx/nginx.conf /etc/nginx/conf.d/sleepanarchy.conf
 COPY --from=builder /dist/* /www/
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=1s --retries=2 CMD [ "curl", "http://localhost:80/" ]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=1s --retries=2 CMD [ "curl", "https://localhost/", "--insecure" ]
