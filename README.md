@@ -151,6 +151,8 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
   start if it can't reach the api or prerender hosts. Maybe a way around this
   is using `set` for the hostnames in nginx, but my first attempt caused this
   to throw "not initialized" errors.
+    * I fixed the `set` directives so they work properly, but need to test
+      removing `depends_on` and see if nginx stays up with no `api` service
 
 
 ## LICENSE
