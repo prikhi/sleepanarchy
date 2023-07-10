@@ -46,6 +46,7 @@ services:
       - ENVIRONMENT=Production
       - DB_HOST=db
       - MEDIA_DIRECTORY=/srv/media
+      - API_JWK=$API_JWK
     volumes:
       - media:/srv/media:rw
     depends_on:
