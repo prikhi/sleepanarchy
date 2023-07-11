@@ -10,7 +10,6 @@ services:
     image: lysergia/sleepanarchy-nginx:latest
     networks:
       - frontend
-    # TODO: map 80:80 & 443:443
     ports:
       - "443:443"
       - "80:80"
@@ -21,6 +20,8 @@ services:
         condition: service_healthy
     volumes:
       - media:/www/media:ro
+      - certbot:/www/certbot:ro
+      - ssl:/etc/nginx/ssl:ro
   prerender:
     build:
       context: .
@@ -32,6 +33,12 @@ services:
     environment:
       CACHE_MAXSIZE: 1000
       CACHE_TTL: 1800
+  certbot:
+    image: certbot/certbot:latest
+    volumes:
+      - certbot:/var/www/certbot:rw
+      - ssl:/etc/letsencrypt:rw
+    entrypoint: echo done
   api:
     build:
       context: .
@@ -76,3 +83,5 @@ networks:
 volumes:
   db:
   media:
+  ssl:
+  certbot:

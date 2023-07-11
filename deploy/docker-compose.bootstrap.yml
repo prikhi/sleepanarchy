@@ -1,0 +1,11 @@
+---
+
+version: '3'
+
+services:
+  certbot:
+    depends_on:
+      nginx:
+        condition: service_healthy
+    entrypoint:
+      certbot certonly --non-interactive --agree-tos -m pavan.rikhi@gmail.com --webroot --webroot-path /var/www/certbot/ -d sleepanarchy.com -d blog.sleepanarchy.com -d www.sleepanarchy.com
