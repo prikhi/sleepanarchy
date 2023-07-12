@@ -6,9 +6,10 @@
 This repo contains the Haskell backend API server & Purescript client used to
 serve [sleepanarchy.com](https://sleepanarchy.com).
 
-It is currently in active development & not live on the website - the current
-website is dead due to the deprecation of Python 2. To view the old Python /
-Django / Mezzanien site, see the `0.1.0-mezzanine-last` tag.
+We've just completed the migrating the production site from our old
+Python/Django/Mezzanine codebase. This project is still in active development
+but the website has basic expected functionality. To view the old Python /
+Django / Mezzanine site, see the `0.1.0-mezzanine-last` tag.
 
 
 ## Develop
