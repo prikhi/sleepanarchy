@@ -12,7 +12,7 @@ import App
   , class PageDataListener
   , class PageDataNotifier
   , PageDataDelayedNotif
-  , SEOData
+  , PageLoadData
   , getToday
   , isLoggedIn
   , killDelayedPageDataNotif
@@ -85,7 +85,7 @@ data Action
   | NavClick Route ME.MouseEvent
   -- | Clear the stored previous page, forcing us to render the current page,
   -- | whether the data is loaded or not.
-  | ClearPreviousPage (Maybe SEOData)
+  | ClearPreviousPage (Maybe PageLoadData)
 
 type Slots =
   ( homePageSlot :: forall query. H.Slot query Void Unit

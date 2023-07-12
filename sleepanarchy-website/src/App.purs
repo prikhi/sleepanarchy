@@ -31,6 +31,7 @@ module App
   , class PageDataNotifier
   , pageDataReceived
   , mkPageDataNotifierEval
+  , PageLoadData
   , SEOData
   , adminSEOData
   , class HasMetaElements
@@ -131,7 +132,7 @@ data AppEnv =
   Env
     { nav :: PushStateInterface
     , authStatus :: Ref AuthStatus
-    , pageDataSub :: SubscribeIO (Maybe SEOData)
+    , pageDataSub :: SubscribeIO (Maybe PageLoadData)
     , metaElements :: MetaElements
     }
 
@@ -248,6 +249,12 @@ instance authHasAuthStatusEff ::
 
 -- PAGE DATA CHANGES
 
+-- | Full set of metadata for page load events.
+type PageLoadData =
+  { seoData :: SEOData
+  , apiStatusCode :: Int
+  }
+
 -- | SEO-specific data for the page as a whole.
 type SEOData =
   { pageTitle :: String
@@ -262,8 +269,8 @@ adminSEOData pageTitle _ _ = { pageTitle, metaDescription: "" }
 -- | Has access to halogen-subscription that emits messages when the data for
 -- | the current page has been fetched.
 class HasPageDataSubscription a where
-  pageDataEmitter :: a -> Emitter (Maybe SEOData)
-  pageDataNotifier :: a -> Listener (Maybe SEOData)
+  pageDataEmitter :: a -> Emitter (Maybe PageLoadData)
+  pageDataNotifier :: a -> Listener (Maybe PageLoadData)
 
 instance hasPageDataSubscriptionAppEnv :: HasPageDataSubscription AppEnv where
   pageDataEmitter (Env e) = e.pageDataSub.emitter
@@ -280,7 +287,7 @@ class Monad m <= PageDataListener m where
   -- message is received. Use with 'subscribe'. The 'SEOData' will be present
   -- when the message represents a page load and empty if the message was sent
   -- after the timeout by 'notifyPageDataAfterMs'.
-  pageDataActionEmitter :: forall a. (Maybe SEOData -> a) -> m (Emitter a)
+  pageDataActionEmitter :: forall a. (Maybe PageLoadData -> a) -> m (Emitter a)
   -- | Fires a subscription message after the given number of milliseconds
   notifyPageDataAfterMs :: Milliseconds -> m PageDataDelayedNotif
   -- | Kill the thread that fires a message after a delay.
@@ -306,7 +313,7 @@ instance pageDataListenerHasPageDataSubscriptionEff ::
 -- | Notifies listeners when a page has finished loading it's data.
 class Monad m <= PageDataNotifier m where
   -- | Send a message through the page-data-loaded subscription.
-  pageDataReceived :: SEOData -> m Unit
+  pageDataReceived :: PageLoadData -> m Unit
 
 instance pageDataNotifierHasPageDataSubscriptionEff ::
   ( HasPageDataSubscription env
@@ -314,8 +321,8 @@ instance pageDataNotifierHasPageDataSubscriptionEff ::
   , MonadEffect m
   ) =>
   PageDataNotifier m where
-  pageDataReceived seoData =
-    asks pageDataNotifier >>= flip notify (Just seoData) >>> liftEffect
+  pageDataReceived pageData =
+    asks pageDataNotifier >>= flip notify (Just pageData) >>> liftEffect
 
 -- | Build a Halogen eval function from an eval config. Wrap the 'handleAction'
 -- | function in the config & fire off a page data subscription message when the
@@ -355,24 +362,34 @@ mkPageDataNotifierEval mkSEOData evalCfg =
     finalState <- H.get
     let initialLoading = isNotAsked initialState || isLoading initialState
     when initialLoading $ case finalState.apiData of
-      Success x -> H.lift $ pageDataReceived $ mkSEOData finalState x
-      Failure e -> H.lift $ pageDataReceived $ errorSEOData e
+      Success x -> H.lift $ pageDataReceived
+        { seoData: mkSEOData finalState x, apiStatusCode: 200 }
+      Failure e -> H.lift $ pageDataReceived $ errorPageData e
       _ -> pure unit
 
-  errorSEOData :: ApiError -> SEOData
-  errorSEOData =
+  errorPageData :: ApiError -> PageLoadData
+  errorPageData =
     case _ of
       HttpError e ->
-        { pageTitle: "HTTP Error"
-        , metaDescription: printError e
+        { seoData:
+            { pageTitle: "HTTP Error"
+            , metaDescription: printError e
+            }
+        , apiStatusCode: 500
         }
       StatusCodeError { status: StatusCode code, body } ->
-        { pageTitle: show code <> " Error"
-        , metaDescription: body
+        { seoData:
+            { pageTitle: show code <> " Error"
+            , metaDescription: body
+            }
+        , apiStatusCode: code
         }
       JsonError e ->
-        { pageTitle: "JSON Decoding Error"
-        , metaDescription: printJsonDecodeError e
+        { seoData:
+            { pageTitle: "JSON Decoding Error"
+            , metaDescription: printJsonDecodeError e
+            }
+        , apiStatusCode: 429
         }
 
 -- SEO META TAGS
@@ -384,6 +401,7 @@ type MetaElements =
   , metaDescription :: Element
   , ogDescription :: Element
   , ogSiteName :: Element
+  , prerenderStatusCode :: Element
   }
 
 -- | Initialize the MetaElements type by querying for their respective meta
@@ -403,6 +421,8 @@ mkMetaElements = do
         (throwException $ error "created head not parsed as HTMLHeadElement")
         (pure <<< HeadHTML.toHTMLElement) $
         HeadHTML.fromElement headEl
+  prerenderStatusCode <- findOrCreateMetaElement document headEl "name"
+    "prerender-status-code"
   metaDescription <- findOrCreateMetaElement document headEl "name"
     "description"
   ogDescription <- findOrCreateMetaElement document headEl "property"
@@ -410,7 +430,13 @@ mkMetaElements = do
   ogSiteName <- findOrCreateMetaElement document headEl "property"
     "og:site_name"
   Element.setAttribute "content" "Sleep Anarchy" ogSiteName
-  pure { document, metaDescription, ogDescription, ogSiteName }
+  pure
+    { document
+    , metaDescription
+    , ogDescription
+    , ogSiteName
+    , prerenderStatusCode
+    }
   where
   -- Find the `meta` tag with the given attribute name & value. Create it and
   -- append it to the `head` tag if missing.
@@ -441,7 +467,7 @@ instance hasMetaElementsAppEnv :: HasMetaElements AppEnv where
 
 -- | Manipulate the `title` & `meta` HTML tags.
 class Monad m <= MetaTags m where
-  setMetaTags :: SEOData -> m Unit
+  setMetaTags :: PageLoadData -> m Unit
 
 instance metaTagsHasMetaElementsEff ::
   ( HasMetaElements env
@@ -449,7 +475,7 @@ instance metaTagsHasMetaElementsEff ::
   , MonadEffect m
   ) =>
   MetaTags m where
-  setMetaTags { pageTitle, metaDescription } = do
+  setMetaTags { apiStatusCode, seoData: { pageTitle, metaDescription } } = do
     meta <- asks getMetaElements
     let
       fullTitle =
@@ -458,3 +484,5 @@ instance metaTagsHasMetaElementsEff ::
     liftEffect $ DocumentHTML.setTitle fullTitle meta.document
     liftEffect $ for_ [ meta.metaDescription, meta.ogDescription ] $ \el ->
       Element.setAttribute "content" metaDescription el
+    liftEffect $ Element.setAttribute "content" (show apiStatusCode)
+      meta.prerenderStatusCode

@@ -75,7 +75,10 @@ handleAction
 handleAction = case _ of
   Initialize ->
     H.lift $ pageDataReceived
-      { pageTitle: "Login", metaDescription: "Login to the Admin Site" }
+      { seoData:
+          { pageTitle: "Login", metaDescription: "Login to the Admin Site" }
+      , apiStatusCode: 200
+      }
   SetUsername str ->
     H.modify_ _ { username = str }
   SetPassword str ->

@@ -152,14 +152,13 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
     * Loading spinner(fade-in?)
     * Scroll to element in hash on initial load(only required on BlogPostView)
     * Scroll to top of page or to hash on page/url change.
-    * Set prerender.io meta element after page data load.
     * Helpers for `pageDataReceived` on init when component has no `apiData`
       field or no action for `initialize`.
     * Throw my github/gitlab/linkedin in footer as icons
 * Blog Posts
     * published date formatting(X days ago)
     * Add feeds to sidebar? Or footer? Or both?
-    * 404 page
+    * 404 page(or redirect to `NotFound` route when api req returns 404)
 * Admin site
     * Add icons to sidebar items
     * Collapseable sidebar
@@ -197,6 +196,8 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
     * Make custom certbot container & entrypoint script that continuously
       renews & sleeps for 24hrs. Add nginx cronjob to reload server daily?
     * Make cronjobs on host machine that uses `docker-compose run`?
+* Use `--start-interval=1s` & expand `--start-period` flags for `HEALTHCHECK`
+  commands once host is on docker v25+.
 
 
 ## LICENSE
