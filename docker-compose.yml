@@ -9,6 +9,7 @@ services:
       context: .
       dockerfile: deploy/nginx/Dockerfile
     image: lysergia/sleepanarchy-nginx:latest
+    restart: unless-stopped
     networks:
       - frontend
     ports:
@@ -29,6 +30,7 @@ services:
       dockerfile: deploy/prerender/Dockerfile
     image: lysergia/sleepanarchy-prerender:latest
     hostname: prerender
+    restart: unless-stopped
     networks:
       - frontend
     environment:
@@ -48,6 +50,7 @@ services:
     image: lysergia/sleepanarchy-api:latest
     tty: true
     hostname: api
+    restart: unless-stopped
     networks:
       - frontend
       - backend
@@ -64,6 +67,7 @@ services:
   db:
     image: postgres:15
     hostname: db
+    restart: unless-stopped
     networks:
       - backend
     environment:
