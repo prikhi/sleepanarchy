@@ -7,5 +7,7 @@ services:
     depends_on:
       nginx:
         condition: service_healthy
-    entrypoint:
-      certbot certonly --non-interactive --agree-tos -m pavan.rikhi@gmail.com --webroot --webroot-path /var/www/certbot/ -d sleepanarchy.com -d blog.sleepanarchy.com -d www.sleepanarchy.com
+    # TODO: remove tmp sub-domain - exists because ratelimit during testing
+    entrypoint: "sh -c 'rm -rf /etc/letsencrypt/live && certbot certonly --non-interactive --agree-tos -m pavan.rikhi@gmail.com --webroot --webroot-path /var/www/certbot/ -d sleepanarchy.com -d blog.sleepanarchy.com -d www.sleepanarchy.com -d tmp.sleepanarchy.com'"
+  api:
+    entrypoint: "sh -c 'sleep 10 && sql-migrate up -env production && /bin/sleepanarchy-api'"

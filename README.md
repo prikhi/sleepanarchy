@@ -65,6 +65,54 @@ createdb sleepanarchy-blog-test -O sleepanarchy-blog
 stack test --fast
 ```
 
+## Deploy
+
+### Initial Deployment
+
+We provisioned a $6/mo droplet on DigitalOcean for the webapp. The hostname is
+set to `blog.sleepanarchy.com`(for the `PTR` record DO will create) and we
+pointed the domain to it's IP. We created a user, installed docker &
+docker-compose, enabled the docker service, & locked down the droplet.
+
+Locally, we have a `Host blog ...` entry in our `.ssh/config` that lets us run
+`ssh blog` to connect to the droplet. The `remote-` commands in the `Makefile`
+use this so we don't have to hardcode our username, ssh key, hostname, etc.
+
+We need an environment file for docker to pass our secrets to the remote host's
+containers. In the `sleepanarchy-api/` folder run `stack run
+sleepanarchy-api-management generate-jwk` and paste the resulting JSON into a
+`env.production.sh` file under the `API_JWK=<key-string-here>` variable name.
+
+We need to do something a little different during the initial deployment of the
+webapp. Our custom nginx docker container contains a throwaway self-signed cert
+to bootstrap the certificate generation from `certbot`.
+
+We perform this bootstrapping with `make remote-bootstrap-certs`. This will
+create our networks, volumes, & containers on the remote host. It uses the
+`deploy/docker-compose.bootstrap.yml` override file to do the initial database
+migration & the `certbot` certificate generation.
+
+You can monitor the progress of certificate generation by running `make
+remote-logs`. After the `sleepanarchy-certbot-1` container exits successfully,
+you should reload the nginx server with `make remote-reload-nginx` to make it
+pick up the new certificates.
+
+Now you should be able to visit https://sleepanarchy.com without seeing the
+self-signed certificate warning.
+
+Next we'll need to migrate our old django database into our new one. The
+makefile will again make this very straightforward:
+
+```sh
+# Add a leading space to prevent adding the shell history
+ CMD="create-user <my-user> <my-pass>" make remote-api-mgmt
+cp ~/blog-dump.psql .
+make remote-migrate-old-db
+```
+
+You should now see all the old posts & links on the new site & be able to sign
+in to the admin.
+
 
 ## TODO
 
@@ -132,20 +180,7 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
 
 ### DEPLOY
 
-* Dockerize server + prerender + nginx into containers
-    * ~~CI builds images on release/tagged commits, pushes to dockerhub~~
-    * docker compose instruments services
-    * ~~nginx only thing exposed to outside world~~
-    * ~~nginx proxies API server & shares media directory with it~~
-    * ~~nginx serves frontend prod builds~~
-    * nginx uses certbot for SSL certs
-    * ~~nginx uses prerender for server side rendering~~
-    * ~~api server has postgres~~
-    * ~~use api server container to run db migrations, mgmt commands~~
-    * makefile commands to remotely update prod via SSH
-    * keep server JWT key secret
-    * support DB password auth - in backend code & compose file
-    * ~~health commands for docker~~
+* Support DB password auth - in backend code & compose file
 * Allow cycling API server w/o restarting nginx. This occurs because of the
   `depends_on` from nginx to api. We need this right now because nginx fails to
   start if it can't reach the api or prerender hosts. Maybe a way around this
@@ -153,6 +188,15 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
   to throw "not initialized" errors.
     * I fixed the `set` directives so they work properly, but need to test
       removing `depends_on` and see if nginx stays up with no `api` service
+* Remove `tmp` subdomain from certbot bootstrap. Was added since we got
+  rate-limited for a week on 7/11 by making too many valid certs while testing.
+* Tag docker images with `latest` only for builds on `master` branch.
+* Tag docker images with tag name for release/tag builds.
+* Implement SSL certificate renewals.
+    * Move certbot to nginx container & add cronjob?
+    * Make custom certbot container & entrypoint script that continuously
+      renews & sleeps for 24hrs. Add nginx cronjob to reload server daily?
+    * Make cronjobs on host machine that uses `docker-compose run`?
 
 
 ## LICENSE

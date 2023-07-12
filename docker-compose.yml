@@ -4,6 +4,7 @@ version: '3'
 
 services:
   nginx:
+    # TODO: need cronjob to call nginx -s reload
     build:
       context: .
       dockerfile: deploy/nginx/Dockerfile
@@ -38,6 +39,7 @@ services:
     volumes:
       - certbot:/var/www/certbot:rw
       - ssl:/etc/letsencrypt:rw
+    # TODO: custom dockerfile w/ sleep + renew cmd
     entrypoint: echo done
   api:
     build:
