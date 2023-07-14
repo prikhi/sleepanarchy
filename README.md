@@ -149,13 +149,16 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
 ### CLIENT
 
 * General
-    * 404 page component - use to set title/description/prerender-code
+    * Redirect blog 404 responses to NotFound page? Or render an `h1` title
+      for error responses in `renderRemoteData`.
     * Loading spinner(fade-in?)
     * Scroll to element in hash on initial load(only required on BlogPostView)
     * Scroll to top of page or to hash on page/url change.
     * Helpers for `pageDataReceived` on init when component has no `apiData`
       field or no action for `initialize`.
     * Throw my github/gitlab/linkedin in footer as icons
+    * SEO: allow optional setting of `og:` article attributes: Author, Purblish
+      Time, Section, & Tag.
 * Blog Posts
     * published date formatting(X days ago)
     * Add feeds to sidebar? Or footer? Or both?

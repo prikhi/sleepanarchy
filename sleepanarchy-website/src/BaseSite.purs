@@ -39,6 +39,7 @@ import Pages.BlogPostTag as BlogPostTag
 import Pages.BlogPostView as BlogPostView
 import Pages.LinkCategoryView as LinkCategoryView
 import Pages.LinkView as LinkView
+import Pages.NotFound as NotFound
 import Router
   ( AdminRoute(..)
   , Route(..)
@@ -96,6 +97,7 @@ type Slots =
       forall query. H.Slot query Void BlogPostCategory.Input
   , viewLinksSlot :: forall query. H.Slot query Void Unit
   , viewLinkCategorySlot :: forall query. H.Slot query Void String
+  , viewNotFoundSlot :: forall query. H.Slot query Void Unit
   , viewAdminSlot :: forall query. H.Slot query Void Unit
   )
 
@@ -122,6 +124,9 @@ _viewLinkCategory = Proxy
 
 _viewAdmin :: Proxy "viewAdminSlot"
 _viewAdmin = Proxy
+
+_viewNotFoundSlot :: Proxy "viewNotFoundSlot"
+_viewNotFoundSlot = Proxy
 
 -- | The base app only cares about the current page & date, all other state is
 -- | stored within the various `Page.*` module componets.
@@ -339,8 +344,10 @@ renderPage = pageWrapper <<< case _ of
     HH.slot_ _viewLinks unit LinkView.page unit
   ViewLinkCategory slug ->
     HH.slot_ _viewLinkCategory slug LinkCategoryView.page slug
-  page ->
-    HH.h1_ [ HH.text $ show page ]
+  NotFound ->
+    HH.slot_ _viewNotFoundSlot unit NotFound.page unit
+  Admin _ ->
+    HH.text "bug! handled by BaseAdmin in BaseSite.render"
   where
   pageWrapper :: forall w i. HH.HTML w i -> HH.HTML w i
   pageWrapper content = HH.div [ HP.class_ $ H.ClassName "main" ]
