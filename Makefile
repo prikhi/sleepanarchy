@@ -25,6 +25,7 @@ remote-pull:
 
 # Start/update remote containers
 remote-deploy:
+	docker -H ssh://blog compose pull
 	docker -H ssh://blog compose --env-file env.production.sh up -d
 
 # Stop the entire remote cluster

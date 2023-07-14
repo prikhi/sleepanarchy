@@ -37,7 +37,7 @@ handleAction = case _ of
           { pageTitle: "404 - Not Found"
           , metaDescription: ""
           }
-      , apiStatusCode: 200
+      , apiStatusCode: 404
       }
 
 render :: forall m. State -> H.ComponentHTML Action () m
