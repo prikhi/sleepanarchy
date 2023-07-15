@@ -125,8 +125,9 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
 * General
     * Haskell `manage.hs` script for running server & client watchers in one
       terminal(see SESE website repo).
-    * Migration script from old django DB to new DB
     * Clean shutdowns using signals
+    * Add `/health` route for docker health checks - should hit the DB. Write
+      custom production logger that ignores requests to the route.
 * Blog Posts
     * Paginated list route?
     * Prev/Next links on details page
