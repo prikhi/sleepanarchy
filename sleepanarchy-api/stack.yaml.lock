@@ -5,81 +5,74 @@
 
 packages:
 - completed:
-    hackage: monad-time-0.3.1.0@sha256:77fd2e1fa0d5103e0fc68cd9dde5e014c72eb034b9cf94adf85f7e457f23128d,1497
-    pantry-tree:
-      sha256: 750fe7796d62dd4258e6a94b94d42e6528e50084e7b68ce7dd31ea0d713591c3
-      size: 371
-  original:
-    hackage: monad-time-0.3.1.0
-- completed:
     name: servant
     pantry-tree:
-      sha256: e09fa15be0b689771c71013dbf6a380aacc2571d06660d284c5e875adffdd00e
+      sha256: 30be9c8b23992020e7dac4a26b226b8e0c5e2a137592866b1d3621407088c2b9
       size: 3020
-    sha256: 8c09f94a8e2eb7e7b4b668bdb8e79858f42f03e2a4498bee17583c963ae588ad
-    size: 410173
+    sha256: a1e592ba13a86cc6925978e2d1cd086a69e1ba3b2848e8eff8156979f1f30413
+    size: 407414
     subdir: servant
-    url: https://github.com/haskell-servant/servant/archive/88408e4a6b1d52088bb6ccf42f04500947410e67.tar.gz
-    version: 0.19.1
+    url: https://github.com/haskell-servant/servant/archive/02242e9adc80d546e6b6561565c585636da1a2b3.tar.gz
+    version: '0.20'
   original:
     subdir: servant
-    url: https://github.com/haskell-servant/servant/archive/88408e4a6b1d52088bb6ccf42f04500947410e67.tar.gz
+    url: https://github.com/haskell-servant/servant/archive/02242e9adc80d546e6b6561565c585636da1a2b3.tar.gz
 - completed:
     name: servant-auth-docs
     pantry-tree:
-      sha256: 5eb4044053700eed6c90d168450d866efc93a81b9d356591e572e3e9d0aaab56
+      sha256: 53f5382df00bf530b24879a0a2953294a610c7c31d5da731a24dbd6da455ae54
       size: 429
-    sha256: 8c09f94a8e2eb7e7b4b668bdb8e79858f42f03e2a4498bee17583c963ae588ad
-    size: 410173
+    sha256: a1e592ba13a86cc6925978e2d1cd086a69e1ba3b2848e8eff8156979f1f30413
+    size: 407414
     subdir: servant-auth/servant-auth-docs
-    url: https://github.com/haskell-servant/servant/archive/88408e4a6b1d52088bb6ccf42f04500947410e67.tar.gz
-    version: 0.2.10.0
+    url: https://github.com/haskell-servant/servant/archive/02242e9adc80d546e6b6561565c585636da1a2b3.tar.gz
+    version: 0.2.10.1
   original:
     subdir: servant-auth/servant-auth-docs
-    url: https://github.com/haskell-servant/servant/archive/88408e4a6b1d52088bb6ccf42f04500947410e67.tar.gz
+    url: https://github.com/haskell-servant/servant/archive/02242e9adc80d546e6b6561565c585636da1a2b3.tar.gz
 - completed:
     name: servant-auth-server
     pantry-tree:
-      sha256: 3b50ec7ebaeff8771157fd11a61b6f46661418d16af973381eb1e71b8025778b
+      sha256: dcebdaef4176bc963219af342b1dc89cebad2051ba27c17b5a3a77d119105d11
       size: 1469
-    sha256: 8c09f94a8e2eb7e7b4b668bdb8e79858f42f03e2a4498bee17583c963ae588ad
-    size: 410173
+    sha256: a1e592ba13a86cc6925978e2d1cd086a69e1ba3b2848e8eff8156979f1f30413
+    size: 407414
     subdir: servant-auth/servant-auth-server
-    url: https://github.com/haskell-servant/servant/archive/88408e4a6b1d52088bb6ccf42f04500947410e67.tar.gz
-    version: 0.4.7.0
+    url: https://github.com/haskell-servant/servant/archive/02242e9adc80d546e6b6561565c585636da1a2b3.tar.gz
+    version: 0.4.8.0
   original:
     subdir: servant-auth/servant-auth-server
-    url: https://github.com/haskell-servant/servant/archive/88408e4a6b1d52088bb6ccf42f04500947410e67.tar.gz
+    url: https://github.com/haskell-servant/servant/archive/02242e9adc80d546e6b6561565c585636da1a2b3.tar.gz
 - completed:
     name: servant-docs
     pantry-tree:
-      sha256: a2cf7dee326d7464105e8337f9393b7c7e51c92085797ea4e15c36b62e88b36b
+      sha256: 8b5697ae0ebe1de42905ce21664391c3863e150f268c5080a5112837746edfb4
       size: 848
-    sha256: 8c09f94a8e2eb7e7b4b668bdb8e79858f42f03e2a4498bee17583c963ae588ad
-    size: 410173
+    sha256: a1e592ba13a86cc6925978e2d1cd086a69e1ba3b2848e8eff8156979f1f30413
+    size: 407414
     subdir: servant-docs
-    url: https://github.com/haskell-servant/servant/archive/88408e4a6b1d52088bb6ccf42f04500947410e67.tar.gz
-    version: '0.12'
+    url: https://github.com/haskell-servant/servant/archive/02242e9adc80d546e6b6561565c585636da1a2b3.tar.gz
+    version: '0.13'
   original:
     subdir: servant-docs
-    url: https://github.com/haskell-servant/servant/archive/88408e4a6b1d52088bb6ccf42f04500947410e67.tar.gz
+    url: https://github.com/haskell-servant/servant/archive/02242e9adc80d546e6b6561565c585636da1a2b3.tar.gz
 - completed:
     name: servant-server
     pantry-tree:
-      sha256: 2a896236d28d395d909c6a002cfe77aaaa0ef229ecd2a64d91dedacd46f6db9d
+      sha256: a7d8d58b5c1433722ac27ed76477cb7a5aa3add0c481e50b8a83a33e94719924
       size: 2728
-    sha256: 8c09f94a8e2eb7e7b4b668bdb8e79858f42f03e2a4498bee17583c963ae588ad
-    size: 410173
+    sha256: a1e592ba13a86cc6925978e2d1cd086a69e1ba3b2848e8eff8156979f1f30413
+    size: 407414
     subdir: servant-server
-    url: https://github.com/haskell-servant/servant/archive/88408e4a6b1d52088bb6ccf42f04500947410e67.tar.gz
-    version: 0.19.2
+    url: https://github.com/haskell-servant/servant/archive/02242e9adc80d546e6b6561565c585636da1a2b3.tar.gz
+    version: '0.20'
   original:
     subdir: servant-server
-    url: https://github.com/haskell-servant/servant/archive/88408e4a6b1d52088bb6ccf42f04500947410e67.tar.gz
+    url: https://github.com/haskell-servant/servant/archive/02242e9adc80d546e6b6561565c585636da1a2b3.tar.gz
 snapshots:
 - completed:
-    sha256: bd34dcded0f9d502275871b7bcd9bbe356bf060276bc6b62fb9e8a225589c74c
-    size: 639151
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/21/2.yaml
+    sha256: 97710f56bf093fca0ee5d8dbe19d96b654c752e405b66795b4baedd84a794c60
+    size: 640010
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/21/3.yaml
   original:
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/21/2.yaml
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/21/3.yaml
