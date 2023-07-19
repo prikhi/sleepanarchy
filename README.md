@@ -117,8 +117,8 @@ in to the admin.
 
 ## TODO
 
-Currently in the middle of migrating from Python/Django/Mezzanine. Once this
-list has been trimmed down a bit, we'll actually migrate & deploy the site.
+The site is live, has posts & links, has an admin that lets me upload media &
+edit/create new posts. That said, still lots that could be improved.
 
 ### SERVER
 
@@ -126,8 +126,10 @@ list has been trimmed down a bit, we'll actually migrate & deploy the site.
     * Haskell `manage.hs` script for running server & client watchers in one
       terminal(see SESE website repo).
     * Clean shutdowns using signals
-    * Add `/health` route for docker health checks - should hit the DB. Write
-      custom production logger that ignores requests to the route.
+    * Auto-retry DB connection on error - docker network is flaky & sometimes
+      DNS lookups don't always work on first request. We currently add a 10s
+      sleep before starting the server in the Dockerfile, but would love to
+      kill that.
 * Blog Posts
     * Paginated list route?
     * Prev/Next links on details page

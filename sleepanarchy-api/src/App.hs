@@ -54,7 +54,18 @@ import Data.Maybe (fromMaybe)
 import Data.Pool (Pool)
 import Database.Persist.Postgresql (ConnectionString, createPostgresqlPool)
 import Database.Persist.Sql (SqlBackend, SqlPersistT, runSqlPool, showMigration)
-import Network.Wai.Middleware.RequestLogger (logStdout, logStdoutDev)
+import Network.Wai (Middleware, pathInfo)
+import Network.Wai.Middleware.RequestLogger
+    ( IPAddrSource (..)
+    , OutputFormat (..)
+    , RequestLoggerSettings (..)
+    , defaultApacheSettings
+    , defaultRequestLoggerSettings
+    , logStdoutDev
+    , mkRequestLogger
+    , setApacheIPAddrSource
+    , setApacheRequestFilter
+    )
 import Servant (Application, ServerError, throwError)
 import Servant.Auth.Server
     ( CookieSettings (..)
@@ -118,9 +129,9 @@ data Config = Config
 mkConfig :: IO Config
 mkConfig = do
     env <- fromMaybe Development . (>>= readMaybe) <$> lookupEnv "ENVIRONMENT"
-    let cfgLoggingMiddleware = case env of
-            Development -> logStdoutDev
-            Production -> logStdout
+    cfgLoggingMiddleware <- case env of
+        Development -> return logStdoutDev
+        Production -> productionLogger
     connStr <- dbConnectionString
     cfgDbPool <- case env of
         Development ->
@@ -198,6 +209,22 @@ mkConfig = do
                 putStrLn ("Specified media directory will be created: " <> dir)
                     >> createDirectoryIfMissing True dir
                     >> return dir
+    -- Apache-style logging using the @X-Real-IP@ header from nginx
+    -- & ignoring the healthcheck route.
+    productionLogger :: IO Middleware
+    productionLogger =
+        mkRequestLogger
+            defaultRequestLoggerSettings
+                { outputFormat =
+                    ApacheWithSettings
+                        $ setApacheIPAddrSource FromFallback
+                        $ setApacheRequestFilter
+                            ( \req _ -> case pathInfo req of
+                                ["healthcheck"] -> False
+                                _ -> True
+                            )
+                            defaultApacheSettings
+                }
 
 
 newtype App a = App

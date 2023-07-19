@@ -19,6 +19,7 @@ import Servant.API
     , MimeUnrender (..)
     , NoContent
     , OctetStream
+    , PlainText
     , Post
     , ReqBody
     , StdMethod (GET)
@@ -56,6 +57,7 @@ import Web.Sitemap.Gen
 import App (App)
 import Handlers.Admin
 import Handlers.BlogPosts
+import Handlers.Health
 import Handlers.Links
 import Handlers.Login
 import Handlers.Sitemap
@@ -71,10 +73,11 @@ type ServerAPI =
         :<|> LoginAPI
         :<|> SitemapAPI
         :<|> Auth '[Cookie, JWT] UserId :> AdminAPI
+        :<|> HealthAPI
 
 
 api :: ServerT ServerAPI App
-api = blogApi :<|> linkApi :<|> loginApi :<|> sitemapApi :<|> adminApi
+api = blogApi :<|> linkApi :<|> loginApi :<|> sitemapApi :<|> adminApi :<|> healthApi
 
 
 apiEndpointDocs :: ExtraInfo (Pretty ServerAPI)
@@ -241,6 +244,17 @@ adminNotes =
         ]
 
 
+-- HEALTH
+
+type HealthAPI =
+    "healthcheck" :> Get '[PlainText] NoContent
+
+
+healthApi :: ServerT HealthAPI App
+healthApi =
+    healthcheck
+
+
 -- ORPHANS
 
 instance ToCapture (Capture "postSlug" Text) where
@@ -297,8 +311,8 @@ instance ToSample SetCookie where
 
 instance ToSample Sitemap where
     toSamples _ =
-        singleSample $
-            Sitemap
+        singleSample
+            $ Sitemap
                 [ SitemapUrl
                     "https://sleepanarchy.com/"
                     (Just $ UTCTime (fromGregorian 2022 04 20) 0)

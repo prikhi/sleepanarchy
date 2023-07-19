@@ -45,7 +45,7 @@ COPY --from=project-builder /dist/* /bin/
 
 RUN apt-get update && apt-get install -yqq libpq-dev curl
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=1s --retries=2 CMD [ "curl", "http://localhost:9001/blog/posts" ]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=1s --retries=2 CMD [ "curl", "http://localhost:9001/healthcheck" ]
 
 WORKDIR /app
 COPY ./sleepanarchy-api/dbconfig.yml .

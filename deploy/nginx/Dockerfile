@@ -30,7 +30,7 @@ RUN rm /etc/nginx/conf.d/default.conf
 RUN mkdir -p /etc/nginx/ssl/live/sleepanarchy.com/
 COPY --from=builder /ssl/* /etc/nginx/ssl/live/sleepanarchy.com/
 
-COPY /deploy/nginx/nginx.conf /etc/nginx/conf.d/sleepanarchy.conf
 COPY --from=builder /dist/* /www/
+COPY /deploy/nginx/nginx.conf /etc/nginx/conf.d/sleepanarchy.conf
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=1s --retries=2 CMD [ "curl", "https://localhost/", "--insecure" ]

@@ -95,6 +95,7 @@ library:
         - stm
         - text
         - time
+        - wai
         - wai-extra
 
 executables:

@@ -36,6 +36,7 @@ library
       Caches.Blog
       Handlers.Admin
       Handlers.BlogPosts
+      Handlers.Health
       Handlers.Links
       Handlers.Login
       Handlers.Sitemap
@@ -89,6 +90,7 @@ library
     , stm
     , text
     , time
+    , wai
     , wai-extra
   default-language: GHC2021
 
