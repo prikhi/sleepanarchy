@@ -9,7 +9,7 @@ RUN mv $HOME/.local/bin/sql-migrate /dist/sql-migrate
 
 
 # Build project dependencies
-FROM haskell:9.4.5-buster AS dependency-builder
+FROM haskell:9.4.7-buster AS dependency-builder
 
 WORKDIR /src
 
@@ -21,7 +21,7 @@ RUN stack build --system-ghc --no-install-ghc --dependencies-only
 
 
 # Build project
-FROM haskell:9.4.5-buster AS project-builder
+FROM haskell:9.4.7-buster AS project-builder
 
 WORKDIR /src
 
