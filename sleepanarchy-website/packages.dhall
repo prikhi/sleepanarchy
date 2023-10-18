@@ -99,10 +99,30 @@ in  upstream
 -------------------------------
 -}
 let upstream =
-      https://github.com/purescript/package-sets/releases/download/psc-0.15.10-20231014/packages.dhall
-        sha256:779d9425686b00140c0bb94b9f5b1eab052643d36e30b900c7fe7d45bab315d5
+      https://github.com/purescript/package-sets/releases/download/psc-0.15.9-20230629/packages.dhall
+        sha256:f91d36c7e4793fe4d7e042c57fef362ff3f9e9ba88454cd38686701e30bf545a
 
 in  upstream
+  with markdown-it =
+    { dependencies =
+      [ "effect"
+      , "prelude"
+      , "psci-support"
+      , "foldable-traversable"
+      , "foreign"
+      , "tuples"
+      , "jest"
+      , "node-process"
+      , "options"
+      ]
+    , repo = "https://github.com/nonbili/purescript-markdown-it.git"
+    , version = "f6e8ee91298f2fc13c4277e75a19e0538de5f7a2"
+    }
+  with jest =
+    { dependencies = [ "effect", "aff", "aff-promise" ]
+    , repo = "https://github.com/nonbili/purescript-jest.git"
+    , version = "v1.0.0"
+    }
   with html-parser-halogen =
     { dependencies =
       [ "arrays"
